@@ -2,7 +2,7 @@
 
 This is a simple program to display "Hello World!"
 
-This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
+This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. Now that I have tested the environment, I will start the development of a Budgeting program. 
 
 [Software Demo Video - COMING SOON](http://youtube.com)
 
