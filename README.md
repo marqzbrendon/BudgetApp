@@ -1,19 +1,17 @@
 # Overview
 
-{Provide a description of your software}
+This is a simple program to display "Hello World!"
 
-{Describe your purpose for creating this software.}
+This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
 
-[Software Demo Video](http://youtube.link.goes.here)
+[Software Demo Video - COMING SOON](http://youtube.com)
 
 # Development Environment
 
-{Describe the tools that you used to develop the software}
+To develop this program I used Intellij IDEA Community Version, git/GitHub, Gradle, and JDK 15-corretto.
 
-{Describe the programming language that you used}
-
+The programming language used was Kotlin.
 # Useful Websites
 
-{Make a list of websites that you found helpful in this project}
-* [Web Site Name](http://url.link.goes.here)
-* [Web Site Name](http://url.link.goes.here)
+* [Get started with Kotlin/JVM](https://kotlinlang.org/docs/jvm-get-started.html)
+* [Set up a Git repository](https://www.jetbrains.com/help/idea/set-up-a-git-repository.html)
