@@ -6,7 +6,7 @@ class ProgramExecution {
         val incomes = mutableListOf<Income>()
         println("ADD INCOMES")
         var status = ""
-        while (status != "q") {
+        while (status != "n") {
             println("Income Source: ")
             val source = readLine().toString()
 
@@ -18,8 +18,12 @@ class ProgramExecution {
             }
             incomes.add(Income(source, value))
 
-            println("To add another income, press ENTER. To finish, press 'q' then ENTER")
-            status = readLine().toString().toLowerCase()
+            println("Would you like to add another income? y/n")
+            status = readLine()!!.toLowerCase()
+            while(status != "n" && status != "y") {
+                println("Invalid input. Would you like to add another income? y/n")
+                status = readLine()!!.toLowerCase()
+            }
         }
         return incomes
     }
@@ -40,7 +44,7 @@ class ProgramExecution {
         val expenses = mutableListOf<Expense>()
         println("ADD EXPENSES")
         var status = ""
-        while (status != "q") {
+        while (status != "n") {
             println("Expense Source: ")
             val source = readLine().toString()
 
@@ -52,8 +56,12 @@ class ProgramExecution {
             }
             expenses.add(Expense(source, value))
 
-            println("To add another expense, press ENTER. To finish, press 'q' then ENTER")
-            status = readLine().toString().toLowerCase()
+            println("Would you like to add another expense? y/n")
+            status = readLine()!!.toLowerCase()
+            while(status != "n" && status != "y") {
+                println("Invalid input. Would you like to add another expense? y/n")
+                status = readLine()!!.toLowerCase()
+            }
         }
         return expenses
     }
