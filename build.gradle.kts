@@ -16,6 +16,7 @@ dependencies {
     testImplementation(kotlin("test-junit"))
     implementation ("com.google.firebase:firebase-admin:7.1.1")
     implementation ("org.slf4j:slf4j-simple:1.7.9" )
+    implementation ("com.beust:klaxon:5.5")
 }
 
 tasks.test {
