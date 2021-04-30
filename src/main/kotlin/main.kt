@@ -177,7 +177,7 @@ fun initializeDb() {
         .build()
     FirebaseApp.initializeApp(options)
 
-    // Retrieve current data from database
+    // Retrieve current data from firebase database
     retrieveExpenseFromDb()
     retrieveIncomeFromDb()
 }
