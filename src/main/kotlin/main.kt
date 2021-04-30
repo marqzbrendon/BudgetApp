@@ -6,6 +6,7 @@ import com.google.firebase.internal.NonNull
 import java.io.FileInputStream
 import java.math.BigDecimal
 
+
 data class Income(
     @PropertyName("source") val source: String,
     @PropertyName("value") val value: Double
@@ -48,11 +49,12 @@ fun main() {
             3) Display Summary
             4) Delete Income
             5) Delete Expense
-            6) Exit Program
+            6) Delete All Data
+            7) Exit Program
             """.trimMargin()
         println(message)
         option = readLine()?.toIntOrNull()
-        while (option !in 1..6 || option == null) {
+        while (option !in 1..7 || option == null) {
             println("Invalid option. Please try again:")
             option = readLine()?.toIntOrNull()
         }
@@ -62,7 +64,8 @@ fun main() {
             3 -> displayFinalBalance()
             4 -> deleteIncome()
             5 -> deleteExpense()
-            6 -> programActive = false
+            6 -> deleteAll()
+            7 -> programActive = false
         }
     }
 
@@ -128,7 +131,7 @@ private fun displayIncome(): Double {
     println("YOUR INCOMES:")
     for (i in incomesFromDb.indices) {
         incomesTotal += incomesFromDb[i].value
-        println("${i+1}. ${incomesFromDb[i].source} - $${incomesFromDb[i].value}")
+        println("${i + 1}. ${incomesFromDb[i].source} - $${incomesFromDb[i].value}")
     }
     println("INCOMES TOTAL: $${incomesTotal}")
     println("\n")
@@ -140,7 +143,7 @@ private fun displayExpense(): Double {
     var expensesTotal = 0.0
     for (i in expensesFromDb.indices) {
         expensesTotal += expensesFromDb[i].value
-        println("${i+1}. ${expensesFromDb[i].source} - $${expensesFromDb[i].value}")
+        println("${i + 1}. ${expensesFromDb[i].source} - $${expensesFromDb[i].value}")
     }
     println("EXPENSES TOTAL: $${expensesTotal}")
     return expensesTotal
@@ -168,12 +171,12 @@ private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
 //***********************************************************************
 fun initializeDb() {
     // Fetch the service account key JSON file contents
-    val serviceAccount = FileInputStream("##SERVICE_ACCOUNT_KEY_FILE##")
+    val serviceAccount = FileInputStream("C:/users/marquesb.guru/Code/GoogleAccount/budgetapp-6dcf0-6ad2ce466bdd.json")
 
     // Initialize the app with a service account, granting admin privileges
     val options = FirebaseOptions.builder()
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .setDatabaseUrl("##DATABASE_URL##")
+        .setDatabaseUrl("https://budgetapp-6dcf0-default-rtdb.firebaseio.com")
         .build()
     FirebaseApp.initializeApp(options)
 
@@ -198,10 +201,11 @@ fun addExpense(expense: Expense) {
 
 fun deleteIncome() {
     if (incomesFromDb.size < 1) {
-        println("There are no incomes.")
+        println("There are no incomes to delete.")
         return
     }
     println("Which income would you like to delete? (Select a number from 1 to ${incomesFromDb.size})")
+    println("Calla la boca viado ( ͡°( ͡° ͜ʖ( ͡° ͜ʖ ͡°)ʖ ͡°) ͡°)")
     displayIncome()
     var index: Int = readLine()?.toIntOrNull()!!
     while (index !in 1..incomesFromDb.size) {
@@ -216,7 +220,7 @@ fun deleteIncome() {
 
 fun deleteExpense() {
     if (expensesFromDb.size < 1) {
-        println("There are no expenses.")
+        println("There are no expenses to delete.")
         return
     }
     println("Which expense would you like to delete? (Select a number from 1 to ${expensesFromDb.size})")
@@ -232,7 +236,7 @@ fun deleteExpense() {
     ref.removeValueAsync()
 }
 
-private fun retrieveIncomeFromDb() {
+fun retrieveIncomeFromDb() {
     val database = FirebaseDatabase.getInstance()
     val ref = database.getReference("data/income")
     val valueEventListener: ValueEventListener = object : ValueEventListener {
@@ -270,5 +274,21 @@ fun retrieveExpenseFromDb() {
         override fun onCancelled(@NonNull error: DatabaseError) {}
     }
     ref.child("").addValueEventListener(valueEventListener)
+}
+
+fun deleteAll() {
+    if (expensesFromDb.size < 1) {
+        println("Nothing to delete.")
+        return
+    }
+    println("THIS ACTION IS IRREVERSIBLE. DO YOU WISH TO CONTINUE? y/n")
+    var status = readLine()!!.toLowerCase()
+    while (status != "n" && status != "y") {
+        println("Invalid input. Would you like to add another income? y/n")
+        status = readLine()!!.toLowerCase()
+    }
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data")
+    ref.removeValueAsync()
 }
 
