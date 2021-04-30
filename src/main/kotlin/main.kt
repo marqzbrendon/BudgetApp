@@ -46,11 +46,13 @@ fun main() {
             1) Add Incomes
             2) Add Expenses
             3) Display Summary
-            4) Exit Program
+            4) Delete Income
+            5) Delete Expense
+            6) Exit Program
             """.trimMargin()
         println(message)
         option = readLine()?.toIntOrNull()
-        while (option !in 1..4 || option == null) {
+        while (option !in 1..6 || option == null) {
             println("Invalid option. Please try again:")
             option = readLine()?.toIntOrNull()
         }
@@ -58,7 +60,9 @@ fun main() {
             1 -> addIncomes()
             2 -> addExpenses()
             3 -> displayFinalBalance()
-            4 -> programActive = false
+            4 -> deleteIncome()
+            5 -> deleteExpense()
+            6 -> programActive = false
         }
     }
 
@@ -124,7 +128,7 @@ private fun displayIncome(): Double {
     println("YOUR INCOMES:")
     for (i in incomesFromDb.indices) {
         incomesTotal += incomesFromDb[i].value
-        println("${incomesFromDb[i].source} - $${incomesFromDb[i].value}")
+        println("${i+1}. ${incomesFromDb[i].source} - $${incomesFromDb[i].value}")
     }
     println("INCOMES TOTAL: $${incomesTotal}")
     println("\n")
@@ -136,7 +140,7 @@ private fun displayExpense(): Double {
     var expensesTotal = 0.0
     for (i in expensesFromDb.indices) {
         expensesTotal += expensesFromDb[i].value
-        println("${expensesFromDb[i].source} - $${expensesFromDb[i].value}")
+        println("${i+1}. ${expensesFromDb[i].source} - $${expensesFromDb[i].value}")
     }
     println("EXPENSES TOTAL: $${expensesTotal}")
     return expensesTotal
@@ -164,16 +168,16 @@ private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
 //***********************************************************************
 fun initializeDb() {
     // Fetch the service account key JSON file contents
-    val serviceAccount = FileInputStream("src/main/kotlin/##SERVICE_ACCOUNT_KEY##")
+    val serviceAccount = FileInputStream("##SERVICE_ACCOUNT_KEY_FILE##")
 
     // Initialize the app with a service account, granting admin privileges
     val options = FirebaseOptions.builder()
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .setDatabaseUrl("##FIREBASE)URL##")
+        .setDatabaseUrl("##DATABASE_URL##")
         .build()
     FirebaseApp.initializeApp(options)
 
-    // Retrieve current data from database
+    // Retrieve current data from firebase database
     retrieveExpenseFromDb()
     retrieveIncomeFromDb()
 }
@@ -190,6 +194,42 @@ fun addExpense(expense: Expense) {
     val ref = database.getReference("data/expense")
     val usersRef: DatabaseReference = ref.child("")
     usersRef.push().setValueAsync(expense)
+}
+
+fun deleteIncome() {
+    if (incomesFromDb.size < 1) {
+        println("There are no incomes.")
+        return
+    }
+    println("Which income would you like to delete? (Select a number from 1 to ${incomesFromDb.size})")
+    displayIncome()
+    var index: Int = readLine()?.toIntOrNull()!!
+    while (index !in 1..incomesFromDb.size) {
+        println("Invalid option. Please select a number from 1 to ${incomesFromDb.size}")
+        index = readLine()?.toIntOrNull()!!
+    }
+    val keyToDelete = incomesKeys[index - 1]
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data/income/$keyToDelete")
+    ref.removeValueAsync()
+}
+
+fun deleteExpense() {
+    if (expensesFromDb.size < 1) {
+        println("There are no expenses.")
+        return
+    }
+    println("Which expense would you like to delete? (Select a number from 1 to ${expensesFromDb.size})")
+    displayExpense()
+    var index: Int = readLine()?.toIntOrNull()!!
+    while (index !in 1..expensesFromDb.size) {
+        println("Invalid option. Please select a number from 1 to ${expensesFromDb.size}")
+        index = readLine()?.toIntOrNull()!!
+    }
+    val keyToDelete = expensesKeys[index - 1]
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data/expense/$keyToDelete")
+    ref.removeValueAsync()
 }
 
 private fun retrieveIncomeFromDb() {
