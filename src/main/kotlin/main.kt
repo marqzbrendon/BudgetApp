@@ -164,12 +164,12 @@ private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
 //***********************************************************************
 fun initializeDb() {
     // Fetch the service account key JSON file contents
-    val serviceAccount = FileInputStream("src/main/kotlin/budget-acd6b-firebase-adminsdk-1y2hb-3ba3808680.json")
+    val serviceAccount = FileInputStream("src/main/kotlin/##SERVICE_ACCOUNT_KEY##")
 
     // Initialize the app with a service account, granting admin privileges
     val options = FirebaseOptions.builder()
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .setDatabaseUrl("https://budget-acd6b-default-rtdb.firebaseio.com")
+        .setDatabaseUrl("##FIREBASE)URL##")
         .build()
     FirebaseApp.initializeApp(options)
 
