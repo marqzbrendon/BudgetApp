@@ -90,7 +90,7 @@ fun addIncomes(): MutableList<Income> {
             value = readLine()?.toDoubleOrNull()
         }
         // incomes.add(Income(source, value))
-        addIncome(Income(source, value))
+        addIncomeDb(Income(source, value))
 
         println("Would you like to add another income? y/n")
         status = readLine()!!.toLowerCase()
@@ -115,7 +115,7 @@ fun addExpenses() {
             println("Invalid value. Please try again:")
             value = readLine()?.toDoubleOrNull()
         }
-        addExpense(Expense(source, value))
+        addExpenseDb(Expense(source, value))
 
         println("Would you like to add another expense? y/n")
         status = readLine()!!.toLowerCase()
@@ -166,46 +166,12 @@ private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
         0
 }
 
-//***********************************************************************
-//******************* COMMUNICATING WITH THE DATABASE *******************
-//***********************************************************************
-fun initializeDb() {
-    // Fetch the service account key JSON file contents
-    val serviceAccount = FileInputStream("C:/users/marquesb.guru/Code/GoogleAccount/budgetapp-6dcf0-6ad2ce466bdd.json")
-
-    // Initialize the app with a service account, granting admin privileges
-    val options = FirebaseOptions.builder()
-        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .setDatabaseUrl("https://budgetapp-6dcf0-default-rtdb.firebaseio.com")
-        .build()
-    FirebaseApp.initializeApp(options)
-
-    // Retrieve current data from firebase database
-    retrieveExpenseFromDb()
-    retrieveIncomeFromDb()
-}
-
-fun addIncome(income: Income) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/income")
-    val usersRef: DatabaseReference = ref.child("")
-    usersRef.push().setValueAsync(income)
-}
-
-fun addExpense(expense: Expense) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/expense")
-    val usersRef: DatabaseReference = ref.child("")
-    usersRef.push().setValueAsync(expense)
-}
-
 fun deleteIncome() {
     if (incomesFromDb.size < 1) {
         println("There are no incomes to delete.")
         return
     }
     println("Which income would you like to delete? (Select a number from 1 to ${incomesFromDb.size})")
-    println("Calla la boca viado ( ͡°( ͡° ͜ʖ( ͡° ͜ʖ ͡°)ʖ ͡°) ͡°)")
     displayIncome()
     var index: Int = readLine()?.toIntOrNull()!!
     while (index !in 1..incomesFromDb.size) {
@@ -213,9 +179,7 @@ fun deleteIncome() {
         index = readLine()?.toIntOrNull()!!
     }
     val keyToDelete = incomesKeys[index - 1]
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/income/$keyToDelete")
-    ref.removeValueAsync()
+    deleteIncomeDb(keyToDelete)
 }
 
 fun deleteExpense() {
@@ -231,6 +195,49 @@ fun deleteExpense() {
         index = readLine()?.toIntOrNull()!!
     }
     val keyToDelete = expensesKeys[index - 1]
+    deleteExpenseDb(keyToDelete)
+}
+
+//***********************************************************************
+//******************* COMMUNICATING WITH THE DATABASE *******************
+//***********************************************************************
+fun initializeDb() {
+    // Fetch the service account key JSON file contents
+    val serviceAccount = FileInputStream("C:/Code/Auth/budget-acd6b-firebase-adminsdk-1y2hb-3ba3808680.json")
+
+    // Initialize the app with a service account, granting admin privileges
+    val options = FirebaseOptions.builder()
+        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+        .setDatabaseUrl("https://budget-acd6b-default-rtdb.firebaseio.com")
+        .build()
+    FirebaseApp.initializeApp(options)
+
+    // Retrieve current data from firebase database
+    retrieveExpenseFromDb()
+    retrieveIncomeFromDb()
+}
+
+fun addIncomeDb(income: Income) {
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data/income")
+    val usersRef: DatabaseReference = ref.child("")
+    usersRef.push().setValueAsync(income)
+}
+
+fun addExpenseDb(expense: Expense) {
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data/expense")
+    val usersRef: DatabaseReference = ref.child("")
+    usersRef.push().setValueAsync(expense)
+}
+
+fun deleteIncomeDb(keyToDelete: String) {
+    val database = FirebaseDatabase.getInstance()
+    val ref = database.getReference("data/income/$keyToDelete")
+    ref.removeValueAsync()
+}
+
+fun deleteExpenseDb(keyToDelete: String) {
     val database = FirebaseDatabase.getInstance()
     val ref = database.getReference("data/expense/$keyToDelete")
     ref.removeValueAsync()
@@ -287,8 +294,13 @@ fun deleteAll() {
         println("Invalid input. Would you like to add another income? y/n")
         status = readLine()!!.toLowerCase()
     }
+    if (status == "n")
+    {
+        return
+    }
     val database = FirebaseDatabase.getInstance()
     val ref = database.getReference("data")
     ref.removeValueAsync()
+    println("All data has been deleted.")
 }
 
