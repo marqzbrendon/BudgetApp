@@ -196,7 +196,7 @@ fun deleteExpense(db: Firestore) {
 
 fun initializeDb(): Firestore {
     // Use the application default credentials
-    val serviceAccount = FileInputStream("auth_key.json")
+    val serviceAccount = FileInputStream("src/main/kotlin/auth_key.json")
     val firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder()
         .setProjectId("budget-acd6b")
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
