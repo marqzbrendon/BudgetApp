@@ -1,32 +1,25 @@
+import com.google.api.core.ApiFuture
 import com.google.auth.oauth2.GoogleCredentials
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.database.*
-import com.google.firebase.internal.NonNull
+import com.google.cloud.firestore.*
 import java.io.FileInputStream
 import java.math.BigDecimal
 
 
 data class Income(
-    @PropertyName("source") val source: String,
-    @PropertyName("value") val value: Double
-) {
-    constructor() : this("", 0.0)
-}
+    val source: String,
+    val value: Double
+)
 
 data class Expense(
-    @PropertyName("source") val source: String,
-    @PropertyName("value") val value: Double
-) {
-    constructor() : this("", 0.0)
-}
+    val source: String,
+    val value: Double
+)
 
-// Mutable lists that will store the query from the database.
-private var incomesFromDb = mutableListOf<Income>()
-private var incomesKeys = mutableListOf<String>()
-private var expensesFromDb = mutableListOf<Expense>()
-private var expensesKeys = mutableListOf<String>()
-
+// Lists that will store the query from the database.
+var incomesDb: MutableList<Income> = mutableListOf()
+var expensesDb: MutableList<Expense> = mutableListOf()
+var incomesDbKeys: MutableList<String> = mutableListOf()
+var expensesDbKeys: MutableList<String> = mutableListOf()
 
 //***********************************************************************
 //************************** PROGRAM MAIN LOOP **************************
@@ -35,8 +28,8 @@ fun main() {
     // My Variables
     var programActive = true
 
-    // Initialize Database
-    initializeDb()
+    // Initialize Database and get current data
+    val db: Firestore = initializeDb()
 
     // Program loop
     println("Welcome! Let's take care of Business.")
@@ -59,12 +52,12 @@ fun main() {
             option = readLine()?.toIntOrNull()
         }
         when (option) {
-            1 -> addIncomes()
-            2 -> addExpenses()
+            1 -> addIncomes(db)
+            2 -> addExpenses(db)
             3 -> displayFinalBalance()
-            4 -> deleteIncome()
-            5 -> deleteExpense()
-            6 -> deleteAll()
+            4 -> deleteIncome(db)
+            5 -> deleteExpense(db)
+            6 -> deleteAll(db)
             7 -> programActive = false
         }
     }
@@ -75,8 +68,7 @@ fun main() {
 //***********************************************************************
 //*********************** PROGRAM BASIC FUNCTIONS ***********************
 //***********************************************************************
-fun addIncomes(): MutableList<Income> {
-    val incomes = mutableListOf<Income>()
+fun addIncomes(db: Firestore) {
     println("ADD INCOMES")
     var status = ""
     while (status != "n") {
@@ -89,8 +81,8 @@ fun addIncomes(): MutableList<Income> {
             println("Invalid value. Please try again:")
             value = readLine()?.toDoubleOrNull()
         }
-        // incomes.add(Income(source, value))
-        addIncomeDb(Income(source, value))
+        // addIncomeDb(Income(source, value))
+        addIncomeDb(db, Income(source, value))
 
         println("Would you like to add another income? y/n")
         status = readLine()!!.toLowerCase()
@@ -99,10 +91,9 @@ fun addIncomes(): MutableList<Income> {
             status = readLine()!!.toLowerCase()
         }
     }
-    return incomes
 }
 
-fun addExpenses() {
+fun addExpenses(db: Firestore) {
     println("ADD EXPENSES")
     var status = ""
     while (status != "n") {
@@ -115,7 +106,8 @@ fun addExpenses() {
             println("Invalid value. Please try again:")
             value = readLine()?.toDoubleOrNull()
         }
-        addExpenseDb(Expense(source, value))
+        // addExpenseDb(Expense(source, value))
+        addExpenseDb(db, Expense(source, value))
 
         println("Would you like to add another expense? y/n")
         status = readLine()!!.toLowerCase()
@@ -126,24 +118,24 @@ fun addExpenses() {
     }
 }
 
-private fun displayIncome(): Double {
+fun displayIncome(): Double {
     var incomesTotal = 0.0
     println("YOUR INCOMES:")
-    for (i in incomesFromDb.indices) {
-        incomesTotal += incomesFromDb[i].value
-        println("${i + 1}. ${incomesFromDb[i].source} - $${incomesFromDb[i].value}")
+    for (i in incomesDb.indices) {
+        incomesTotal += incomesDb[i].value
+        println("${i + 1}. ${incomesDb[i].source} - $${incomesDb[i].value}")
     }
     println("INCOMES TOTAL: $${incomesTotal}")
     println("\n")
     return incomesTotal
 }
 
-private fun displayExpense(): Double {
+fun displayExpense(): Double {
     println("YOUR EXPENSES:")
     var expensesTotal = 0.0
-    for (i in expensesFromDb.indices) {
-        expensesTotal += expensesFromDb[i].value
-        println("${i + 1}. ${expensesFromDb[i].source} - $${expensesFromDb[i].value}")
+    for (i in expensesDb.indices) {
+        expensesTotal += expensesDb[i].value
+        println("${i + 1}. ${expensesDb[i].source} - $${expensesDb[i].value}")
     }
     println("EXPENSES TOTAL: $${expensesTotal}")
     return expensesTotal
@@ -158,7 +150,7 @@ fun displayFinalBalance() {
     println("--------------------------------------------")
 }
 
-private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
+fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
     val scale = number?.stripTrailingZeros()?.scale()
     return if (scale != null) {
         if (scale > 0) scale else 0
@@ -166,141 +158,161 @@ private fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
         0
 }
 
-fun deleteIncome() {
-    if (incomesFromDb.size < 1) {
+fun deleteIncome(db: Firestore) {
+    if (incomesDb.size < 1) {
         println("There are no incomes to delete.")
         return
     }
-    println("Which income would you like to delete? (Select a number from 1 to ${incomesFromDb.size})")
+    println("Which income would you like to delete? (Select a number from 1 to ${incomesDb.size})")
     displayIncome()
     var index: Int = readLine()?.toIntOrNull()!!
-    while (index !in 1..incomesFromDb.size) {
-        println("Invalid option. Please select a number from 1 to ${incomesFromDb.size}")
+    while (index !in 1..incomesDb.size) {
+        println("Invalid option. Please select a number from 1 to ${incomesDb.size}")
         index = readLine()?.toIntOrNull()!!
     }
-    val keyToDelete = incomesKeys[index - 1]
-    deleteIncomeDb(keyToDelete)
+    val keyToDelete = incomesDbKeys[index - 1]
+    deleteIncomeDb(db, keyToDelete)
 }
 
-fun deleteExpense() {
-    if (expensesFromDb.size < 1) {
+fun deleteExpense(db: Firestore) {
+    if (expensesDb.size < 1) {
         println("There are no expenses to delete.")
         return
     }
-    println("Which expense would you like to delete? (Select a number from 1 to ${expensesFromDb.size})")
+    println("Which expense would you like to delete? (Select a number from 1 to ${expensesDb.size})")
     displayExpense()
     var index: Int = readLine()?.toIntOrNull()!!
-    while (index !in 1..expensesFromDb.size) {
-        println("Invalid option. Please select a number from 1 to ${expensesFromDb.size}")
+    while (index !in 1..expensesDb.size) {
+        println("Invalid option. Please select a number from 1 to ${expensesDb.size}")
         index = readLine()?.toIntOrNull()!!
     }
-    val keyToDelete = expensesKeys[index - 1]
-    deleteExpenseDb(keyToDelete)
+    val keyToDelete = expensesDbKeys[index - 1]
+    deleteExpenseDb(db, keyToDelete)
 }
 
 //***********************************************************************
 //******************* COMMUNICATING WITH THE DATABASE *******************
 //***********************************************************************
-fun initializeDb() {
-    // Fetch the service account key JSON file contents
-    val serviceAccount = FileInputStream("C:/Code/Auth/budget-acd6b-firebase-adminsdk-1y2hb-3ba3808680.json")
 
-    // Initialize the app with a service account, granting admin privileges
-    val options = FirebaseOptions.builder()
+fun initializeDb(): Firestore {
+    // Use the application default credentials
+    val serviceAccount = FileInputStream("auth_key.json")
+    val firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder()
+        .setProjectId("budget-acd6b")
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .setDatabaseUrl("https://budget-acd6b-default-rtdb.firebaseio.com")
         .build()
-    FirebaseApp.initializeApp(options)
-
-    // Retrieve current data from firebase database
-    retrieveExpenseFromDb()
-    retrieveIncomeFromDb()
+    retrieveAllDocuments(firestoreOptions.service)
+    return firestoreOptions.service
 }
 
-fun addIncomeDb(income: Income) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/income")
-    val usersRef: DatabaseReference = ref.child("")
-    usersRef.push().setValueAsync(income)
+fun addIncomeDb(db: Firestore, income: Income) {
+    val incomeDb = HashMap<String, Any>()
+    incomeDb["source"] = income.source
+    incomeDb["value"] = income.value
+    db.collection("income").document().set(incomeDb)
 }
 
-fun addExpenseDb(expense: Expense) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/expense")
-    val usersRef: DatabaseReference = ref.child("")
-    usersRef.push().setValueAsync(expense)
+fun addExpenseDb(db: Firestore?, expense: Expense) {
+    val expenseDb = HashMap<String, Any>()
+    expenseDb["source"] = expense.source
+    expenseDb["value"] = expense.value
+    db?.collection("expense")?.document()?.set(expenseDb)
 }
 
-fun deleteIncomeDb(keyToDelete: String) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/income/$keyToDelete")
-    ref.removeValueAsync()
-}
-
-fun deleteExpenseDb(keyToDelete: String) {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/expense/$keyToDelete")
-    ref.removeValueAsync()
-}
-
-fun retrieveIncomeFromDb() {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/income")
-    val valueEventListener: ValueEventListener = object : ValueEventListener {
-        override fun onDataChange(@NonNull snapshot: DataSnapshot) {
-            // Loop through of each of the elements of the list (children) and convert
-            // to Income objects.  Since we are receiving all of them, we need to clear our array first.
-            incomesFromDb.clear()
-            incomesKeys.clear()
-            for (child in snapshot.children) {
-                incomesFromDb.add(child.getValue(Income::class.java))
-                incomesKeys.add(child.key)
+fun retrieveAllDocuments(db: Firestore?) {
+    db?.collection("income")
+        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
+            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
+                incomesDb.clear()
+                incomesDbKeys.clear()
+                if (e != null) {
+                    System.err.println("Listen failed:$e")
+                    return
+                }
+                if (snapshots != null) {
+                    for (doc in snapshots) {
+                        doc.getString("source")?.let {
+                            doc.getDouble("value")
+                                ?.let { it1 -> Income(it, it1) }
+                        }?.let { incomesDb.add(it) }
+                        incomesDbKeys.add(doc.id)
+                    }
+                }
             }
-        }
+        })
 
-        override fun onCancelled(@NonNull error: DatabaseError) {}
-    }
-    ref.child("").addValueEventListener(valueEventListener)
-}
-
-fun retrieveExpenseFromDb() {
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data/expense")
-    val valueEventListener: ValueEventListener = object : ValueEventListener {
-        override fun onDataChange(@NonNull snapshot: DataSnapshot) {
-            // Loop through of each of the elements of the list (children) and convert
-            // to Income objects.  Since we are receiving all of them, we need to clear our array first.
-            expensesFromDb.clear()
-            expensesKeys.clear()
-            for (child in snapshot.children) {
-                expensesFromDb.add(child.getValue(Expense::class.java))
-                expensesKeys.add(child.key)
+    db?.collection("expense")
+        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
+            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
+                expensesDb.clear()
+                expensesDbKeys.clear()
+                if (e != null) {
+                    System.err.println("Listen failed:$e")
+                    return
+                }
+                if (snapshots != null) {
+                    for (doc in snapshots) {
+                        doc.getString("source")?.let {
+                            doc.getDouble("value")
+                                ?.let { it1 -> Expense(it, it1) }
+                        }?.let { expensesDb.add(it) }
+                        expensesDbKeys.add(doc.id)
+                    }
+                }
             }
-        }
-
-        override fun onCancelled(@NonNull error: DatabaseError) {}
-    }
-    ref.child("").addValueEventListener(valueEventListener)
+        })
 }
 
-fun deleteAll() {
-    if (expensesFromDb.size < 1) {
+fun deleteIncomeDb(db:Firestore ,keyToDelete: String) {
+    db.collection("income").document(keyToDelete).delete()
+    println("Income deleted.")
+}
+
+fun deleteExpenseDb(db: Firestore, keyToDelete: String) {
+    db.collection("expense").document(keyToDelete).delete()
+    println("Expense deleted.")
+}
+
+fun deleteAll(db: Firestore) {
+    if (expensesDb.size < 1 && incomesDb.size < 1) {
         println("Nothing to delete.")
         return
     }
     println("THIS ACTION IS IRREVERSIBLE. DO YOU WISH TO CONTINUE? y/n")
     var status = readLine()!!.toLowerCase()
     while (status != "n" && status != "y") {
-        println("Invalid input. Would you like to add another income? y/n")
+        println("Invalid input. Delete all data? y/n")
         status = readLine()!!.toLowerCase()
     }
-    if (status == "n")
-    {
+    if (status == "n") {
         return
     }
-    val database = FirebaseDatabase.getInstance()
-    val ref = database.getReference("data")
-    ref.removeValueAsync()
+    deleteAllIncomes(db)
+    deleteAllExpenses(db)
     println("All data has been deleted.")
+}
+
+fun deleteAllIncomes(db: Firestore) {
+    try {
+        val incomes: ApiFuture<QuerySnapshot> = db.collection("income").get()
+        val documents = incomes.get().documents
+        for (document in documents) {
+            document.reference.delete()
+        }
+    } catch (e: Exception) {
+        System.err.println("Error deleting collection : " + e.message)
+    }
+}
+
+fun deleteAllExpenses(db: Firestore) {
+    try {
+        val expenses: ApiFuture<QuerySnapshot> = db.collection("expense").get()
+        val documents = expenses.get().documents
+        for (document in documents) {
+            document.reference.delete()
+        }
+    } catch (e: Exception) {
+        System.err.println("Error deleting collection : " + e.message)
+    }
 }
 

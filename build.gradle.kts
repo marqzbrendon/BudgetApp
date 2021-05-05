@@ -14,7 +14,7 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test-junit"))
-    implementation ("com.google.firebase:firebase-admin:7.1.1")
+    implementation ("com.google.firebase:firebase-admin:7.2.0")
     implementation ("org.slf4j:slf4j-simple:1.7.9" )
 }
 
