@@ -40,14 +40,15 @@ fun main() {
             1) Add Incomes
             2) Add Expenses
             3) Display Summary
-            4) Delete Income
-            5) Delete Expense
-            6) Delete All Data
-            7) Exit Program
+            4) Edit an Income
+            6) Delete Income
+            7) Delete Expense
+            8) Delete All Data
+            9) Exit Program
             """.trimMargin()
         println(message)
         option = readLine()?.toIntOrNull()
-        while (option !in 1..7 || option == null) {
+        while (option !in 1..9 || option == null) {
             println("Invalid option. Please try again:")
             option = readLine()?.toIntOrNull()
         }
@@ -55,10 +56,12 @@ fun main() {
             1 -> addIncomes(db)
             2 -> addExpenses(db)
             3 -> displayFinalBalance()
-            4 -> deleteIncome(db)
-            5 -> deleteExpense(db)
-            6 -> deleteAll(db)
-            7 -> programActive = false
+            4 -> editIncome(db)
+            5 -> editExpense(db)
+            6 -> deleteIncome(db)
+            7 -> deleteExpense(db)
+            8 -> deleteAll(db)
+            9 -> programActive = false
         }
     }
 
@@ -148,6 +151,82 @@ fun displayFinalBalance() {
     println("--------------------------------------------")
     println("FINAL BALANCE: $${incomeTotal.toBigDecimal() - expenseTotal.toBigDecimal()}")
     println("--------------------------------------------")
+}
+
+fun editIncome(db: Firestore) {
+    if (incomesDb.size < 1) {
+        println("There are no incomes to edit.")
+        return
+    }
+
+    var status = ""
+    while (status != "n") {
+        println("Which income would you like to edit? (Select a number from 1 to ${incomesDb.size})")
+        displayIncome()
+        var index: Int = readLine()?.toIntOrNull()!!
+        while (index !in 1..incomesDb.size) {
+            println("Invalid option. Please select a number from 1 to ${incomesDb.size}")
+            index = readLine()?.toIntOrNull()!!
+        }
+
+        println("Income Source: ")
+        val source = readLine().toString()
+
+        println("Income Value: ")
+        var value = readLine()?.toDoubleOrNull()
+        while (value == null || getNumberOfDecimalPlaces(value.toBigDecimal()) > 2 || value < 0.0) {
+            println("Invalid value. Please try again:")
+            value = readLine()?.toDoubleOrNull()
+        }
+
+        val keyToEdit = incomesDbKeys[index - 1]
+        editIncomeDb(db, keyToEdit, Income(source, value))
+
+        println("Would you like to edit another income? y/n")
+        status = readLine()!!.toLowerCase()
+        while (status != "n" && status != "y") {
+            println("Invalid input. Would you like to add another income? y/n")
+            status = readLine()!!.toLowerCase()
+        }
+    }
+}
+
+fun editExpense(db: Firestore) {
+    if (expensesDb.size < 1) {
+        println("There are no expenses to edit.")
+        return
+    }
+
+    var status = ""
+    while (status != "n") {
+        println("Which expense would you like to edit? (Select a number from 1 to ${incomesDb.size})")
+        displayExpense()
+        var index: Int = readLine()?.toIntOrNull()!!
+        while (index !in 1..expensesDb.size) {
+            println("Invalid option. Please select a number from 1 to ${expensesDb.size}")
+            index = readLine()?.toIntOrNull()!!
+        }
+
+        println("Expense Source: ")
+        val source = readLine().toString()
+
+        println("Expense Value: ")
+        var value = readLine()?.toDoubleOrNull()
+        while (value == null || getNumberOfDecimalPlaces(value.toBigDecimal()) > 2 || value < 0.0) {
+            println("Invalid value. Please try again:")
+            value = readLine()?.toDoubleOrNull()
+        }
+
+        val keyToEdit = expensesDbKeys[index - 1]
+        editExpenseDb(db, keyToEdit, Expense(source, value))
+
+        println("Would you like to edit another expense? y/n")
+        status = readLine()!!.toLowerCase()
+        while (status != "n" && status != "y") {
+            println("Invalid input. Would you like to add another expense? y/n")
+            status = readLine()!!.toLowerCase()
+        }
+    }
 }
 
 fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
@@ -263,7 +342,19 @@ fun retrieveAllDocuments(db: Firestore?) {
         })
 }
 
-fun deleteIncomeDb(db:Firestore ,keyToDelete: String) {
+fun editIncomeDb(db: Firestore, keyToEdit: String, newData: Income) {
+    val docRef = db.collection("income").document(keyToEdit)
+    docRef.update("source", newData.source, "value", newData.value)
+    println("Income edited.")
+}
+
+fun editExpenseDb(db: Firestore, keyToEdit: String, newData: Expense) {
+    val docRef = db.collection("expense").document(keyToEdit)
+    docRef.update("source", newData.source, "value", newData.value)
+    println("Expense edited.")
+}
+
+fun deleteIncomeDb(db: Firestore, keyToDelete: String) {
     db.collection("income").document(keyToDelete).delete()
     println("Income deleted.")
 }
