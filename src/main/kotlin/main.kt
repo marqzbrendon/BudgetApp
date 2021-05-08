@@ -128,8 +128,8 @@ fun addExpenses(db: Firestore) {
     }
 }
 
+// Display the list of incomes and their total
 fun displayIncome(): Double {
-    // Display the list of incomes and their total
     var incomesTotal = 0.0
     println("YOUR INCOMES:")
     for (i in incomesDb.indices) {
@@ -141,8 +141,8 @@ fun displayIncome(): Double {
     return incomesTotal
 }
 
+// Display the list of expenses and their total
 fun displayExpense(): Double {
-    // Display the list of expenses and their total
     println("YOUR EXPENSES:")
     var expensesTotal = 0.0
     for (i in expensesDb.indices) {
@@ -153,6 +153,7 @@ fun displayExpense(): Double {
     return expensesTotal
 }
 
+// Display both the income total and the expanse total, and subtract their values
 fun displayFinalBalance() {
     val incomeTotal = displayIncome()
     val expenseTotal = displayExpense()
@@ -162,6 +163,7 @@ fun displayFinalBalance() {
     println("--------------------------------------------")
 }
 
+// Edit any income
 fun editIncome(db: Firestore) {
     if (incomesDb.size < 1) {
         println("There are no incomes to edit.")
@@ -200,6 +202,7 @@ fun editIncome(db: Firestore) {
     }
 }
 
+// Edit any expense
 fun editExpense(db: Firestore) {
     if (expensesDb.size < 1) {
         println("There are no expenses to edit.")
@@ -238,6 +241,7 @@ fun editExpense(db: Firestore) {
     }
 }
 
+// Validates the input for income and expanse values
 fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
     val scale = number?.stripTrailingZeros()?.scale()
     return if (scale != null) {
@@ -246,6 +250,7 @@ fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
         0
 }
 
+// Delete any income
 fun deleteIncome(db: Firestore) {
     if (incomesDb.size < 1) {
         println("There are no incomes to delete.")
@@ -262,6 +267,7 @@ fun deleteIncome(db: Firestore) {
     deleteIncomeDb(db, keyToDelete)
 }
 
+// Delete any expense
 fun deleteExpense(db: Firestore) {
     if (expensesDb.size < 1) {
         println("There are no expenses to delete.")
@@ -283,16 +289,18 @@ fun deleteExpense(db: Firestore) {
 //***********************************************************************
 
 fun initializeDb(): Firestore {
-    // Use the application default credentials
+    // Initialize and authenticate the application
     val serviceAccount = FileInputStream("src/main/kotlin/auth_key.json")
     val firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder()
         .setProjectId("budget-acd6b")
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
         .build()
+    // Get the data from the database as the program initiates
     retrieveAllDocuments(firestoreOptions.service)
     return firestoreOptions.service
 }
 
+// Push an income to the database
 fun addIncomeDb(db: Firestore, income: Income) {
     val incomeDb = HashMap<String, Any>()
     incomeDb["source"] = income.source
@@ -300,6 +308,7 @@ fun addIncomeDb(db: Firestore, income: Income) {
     db.collection("income").document().set(incomeDb)
 }
 
+// Push an expense to the database
 fun addExpenseDb(db: Firestore?, expense: Expense) {
     val expenseDb = HashMap<String, Any>()
     expenseDb["source"] = expense.source
@@ -307,6 +316,8 @@ fun addExpenseDb(db: Firestore?, expense: Expense) {
     db?.collection("expense")?.document()?.set(expenseDb)
 }
 
+// Loop through the income and expense collections in the database, and store the data in local variables.
+// The 'onEvent' function will listen to any changes on the database, and automatically retrieve the changed data.
 fun retrieveAllDocuments(db: Firestore?) {
     db?.collection("income")
         ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
@@ -351,28 +362,34 @@ fun retrieveAllDocuments(db: Firestore?) {
         })
 }
 
+// Edit an income in the database
 fun editIncomeDb(db: Firestore, keyToEdit: String, newData: Income) {
     val docRef = db.collection("income").document(keyToEdit)
     docRef.update("source", newData.source, "value", newData.value)
     println("Income edited.")
 }
 
+// Edit an expense in the database
 fun editExpenseDb(db: Firestore, keyToEdit: String, newData: Expense) {
     val docRef = db.collection("expense").document(keyToEdit)
     docRef.update("source", newData.source, "value", newData.value)
     println("Expense edited.")
 }
 
+// Delete an income in the database
 fun deleteIncomeDb(db: Firestore, keyToDelete: String) {
     db.collection("income").document(keyToDelete).delete()
     println("Income deleted.")
 }
 
+// Delete an expense in the database
 fun deleteExpenseDb(db: Firestore, keyToDelete: String) {
     db.collection("expense").document(keyToDelete).delete()
     println("Expense deleted.")
 }
 
+// Calls two functions, one for the income and the other for the expense collection,
+// that will delete all the data in those collections
 fun deleteAll(db: Firestore) {
     if (expensesDb.size < 1 && incomesDb.size < 1) {
         println("Nothing to delete.")
@@ -392,6 +409,7 @@ fun deleteAll(db: Firestore) {
     println("All data has been deleted.")
 }
 
+// Delete all incomes in the database
 fun deleteAllIncomes(db: Firestore) {
     try {
         val incomes: ApiFuture<QuerySnapshot> = db.collection("income").get()
@@ -404,6 +422,7 @@ fun deleteAllIncomes(db: Firestore) {
     }
 }
 
+// Delete all expenses in the database
 fun deleteAllExpenses(db: Firestore) {
     try {
         val expenses: ApiFuture<QuerySnapshot> = db.collection("expense").get()
