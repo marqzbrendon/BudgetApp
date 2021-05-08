@@ -14,7 +14,7 @@ In future releases, the program will also support adding categories for expenses
 
 This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
 
-[Software Demo Video](https://youtu.be/EsqBgnmJ5EM)
+[Software Demo Video](https://youtu.be/NhRPpvf6enk)
 
 # Development Environment
 
