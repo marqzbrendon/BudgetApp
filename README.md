@@ -1,8 +1,18 @@
 # Overview
 
-This is a simple program to display "Hello World!" 
+This is a Budget app written in Kotlin.
 
-This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. Now that I have tested the environment, I will start the development of a Budgeting program. 
+Currently, the program support the following features:
+- Add/edit/delete income
+- Add/edit/delete expense
+- Display budget summary
+- Delete all data
+
+All the income and expense data are stored in a Firestore cloud database. 
+
+In future releases, the program will also support adding categories for expenses, create budgets for each of the categories, and more. 
+
+This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
 
 [Software Demo Video](https://youtu.be/EsqBgnmJ5EM)
 
@@ -15,3 +25,4 @@ The programming language used was Kotlin.
 
 * [Get started with Kotlin/JVM](https://kotlinlang.org/docs/jvm-get-started.html)
 * [Set up a Git repository](https://www.jetbrains.com/help/idea/set-up-a-git-repository.html)
+* [Firestore documentation](https://firebase.google.com/docs/firestore)

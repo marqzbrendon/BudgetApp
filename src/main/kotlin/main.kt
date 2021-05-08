@@ -4,7 +4,7 @@ import com.google.cloud.firestore.*
 import java.io.FileInputStream
 import java.math.BigDecimal
 
-
+// data classes to hold data
 data class Income(
     val source: String,
     val value: Double
@@ -15,7 +15,7 @@ data class Expense(
     val value: Double
 )
 
-// Lists that will store the query from the database.
+// Lists that will store the query results from the database.
 var incomesDb: MutableList<Income> = mutableListOf()
 var expensesDb: MutableList<Expense> = mutableListOf()
 var incomesDbKeys: MutableList<String> = mutableListOf()
@@ -25,7 +25,7 @@ var expensesDbKeys: MutableList<String> = mutableListOf()
 //************************** PROGRAM MAIN LOOP **************************
 //***********************************************************************
 fun main() {
-    // My Variables
+    // Variable to keep the program running
     var programActive = true
 
     // Initialize Database and get current data
@@ -41,6 +41,7 @@ fun main() {
             2) Add Expenses
             3) Display Summary
             4) Edit an Income
+            5) Edit an Expense
             6) Delete Income
             7) Delete Expense
             8) Delete All Data
@@ -72,6 +73,7 @@ fun main() {
 //*********************** PROGRAM BASIC FUNCTIONS ***********************
 //***********************************************************************
 fun addIncomes(db: Firestore) {
+    // Get the new income source and value
     println("ADD INCOMES")
     var status = ""
     while (status != "n") {
@@ -84,9 +86,11 @@ fun addIncomes(db: Firestore) {
             println("Invalid value. Please try again:")
             value = readLine()?.toDoubleOrNull()
         }
-        // addIncomeDb(Income(source, value))
+
+        // Call the database to add the new income
         addIncomeDb(db, Income(source, value))
 
+        // Ask if user would like to add another income
         println("Would you like to add another income? y/n")
         status = readLine()!!.toLowerCase()
         while (status != "n" && status != "y") {
@@ -97,6 +101,7 @@ fun addIncomes(db: Firestore) {
 }
 
 fun addExpenses(db: Firestore) {
+    // Get the new expense source and value
     println("ADD EXPENSES")
     var status = ""
     while (status != "n") {
@@ -109,9 +114,11 @@ fun addExpenses(db: Firestore) {
             println("Invalid value. Please try again:")
             value = readLine()?.toDoubleOrNull()
         }
-        // addExpenseDb(Expense(source, value))
+
+        // Call the database to add the new expense
         addExpenseDb(db, Expense(source, value))
 
+        // Ask if user would like to add another expense
         println("Would you like to add another expense? y/n")
         status = readLine()!!.toLowerCase()
         while (status != "n" && status != "y") {
@@ -122,6 +129,7 @@ fun addExpenses(db: Firestore) {
 }
 
 fun displayIncome(): Double {
+    // Display the list of incomes and their total
     var incomesTotal = 0.0
     println("YOUR INCOMES:")
     for (i in incomesDb.indices) {
@@ -134,6 +142,7 @@ fun displayIncome(): Double {
 }
 
 fun displayExpense(): Double {
+    // Display the list of expenses and their total
     println("YOUR EXPENSES:")
     var expensesTotal = 0.0
     for (i in expensesDb.indices) {
