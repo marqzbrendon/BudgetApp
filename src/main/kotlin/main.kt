@@ -201,7 +201,7 @@ fun displayIncome(data: Data, displayCancel: Boolean): Double {
         println("${i + 1}. ${data.incomesDb[i].source} - $${data.incomesDb[i].value}")
     }
     if (displayCancel) {
-        println("0. Cancel")
+        println("\n0. Cancel")
         return 0.0
     }
     println("INCOMES TOTAL: $${incomesTotal}")
