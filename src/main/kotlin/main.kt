@@ -8,21 +8,26 @@ import java.math.BigDecimal
 data class Data(
     var month: Long = 0L,
     var year: Long = 0L,
-    var incomesDb: MutableList<Income> = mutableListOf(),
-    var expensesDb: MutableList<Expense> = mutableListOf(),
+    var incomesDb: MutableList<Input> = mutableListOf(),
+    var expensesDb: MutableList<Input> = mutableListOf(),
     var incomesDbKeys: MutableList<String> = mutableListOf(),
     var expensesDbKeys: MutableList<String> = mutableListOf()
 )
 
-data class Income(
+data class Input(
     val source: String,
     val value: Double
 )
 
-data class Expense(
-    val source: String,
-    val value: Double
-)
+//data class Income(
+//    val source: String,
+//    val value: Double
+//)
+
+//data class Expense(
+//    val source: String,
+//    val value: Double
+//)
 
 //***********************************************************************
 //************************** PROGRAM MAIN LOOP **************************
@@ -72,8 +77,8 @@ fun main() {
                 option = readLine()?.toIntOrNull()
             }
             when (option) {
-                1 -> incomes(db, data) //addIncomes(db)
-                2 -> expenses(db, data) //addExpenses(db)
+                1 -> incomes(db, data)
+                2 -> expenses(db, data)
                 3 -> displayFinalBalance(data)
                 7 -> monthYearActive = false
                 8 -> deleteAll(db, data)
@@ -168,7 +173,7 @@ fun addIncomes(db: Firestore, data: Data) {
         }
 
         // Call the database to add the new income
-        addIncomeDb(db, Income(source, value), data)
+        addIncomeDb(db, Input(source, value), data)
 
         // Ask if user would like to add another income
         println("Would you like to add another income? y/n")
@@ -205,7 +210,7 @@ fun addExpenses(db: Firestore, data: Data) {
         }
 
         // Call the database to add the new expense
-        addExpenseDb(db, Expense(source, value), data)
+        addExpenseDb(db, Input(source, value), data)
 
         // Ask if user would like to add another expense
         println("Would you like to add another expense? y/n")
@@ -302,7 +307,7 @@ fun editIncome(db: Firestore, data: Data) {
             }
         }
 
-        editIncomeDb(db, data, index, Income(source, value))
+        editIncomeDb(db, data, index, Input(source, value))
 
         println("Would you like to edit another income? y/n")
         status = readLine()!!.toLowerCase()
@@ -355,7 +360,7 @@ fun editExpense(db: Firestore, data: Data) {
             }
         }
 
-        editExpenseDb(db, data, index, Expense(source, value))
+        editExpenseDb(db, data, index, Input(source, value))
 
         println("Would you like to edit another expense? y/n")
         status = readLine()!!.toLowerCase()
@@ -453,7 +458,7 @@ fun initializeDb(data: Data): Firestore {
 }
 
 // Push an income to the database
-fun addIncomeDb(db: Firestore, income: Income, data: Data) {
+fun addIncomeDb(db: Firestore, income: Input, data: Data) {
     val incomeDb = HashMap<String, Any>()
     incomeDb["source"] = income.source
     incomeDb["value"] = income.value
@@ -461,11 +466,11 @@ fun addIncomeDb(db: Firestore, income: Income, data: Data) {
 }
 
 // Push an expense to the database
-fun addExpenseDb(db: Firestore, expense: Expense, data: Data) {
+fun addExpenseDb(db: Firestore, expense: Input, data: Data) {
     val expenseDb = HashMap<String, Any>()
     expenseDb["source"] = expense.source
     expenseDb["value"] = expense.value
-    db.collection("${data.year}").document("${data.month}").collection("income").document().set(expenseDb)
+    db.collection("${data.year}").document("${data.month}").collection("expense").document().set(expenseDb)
 }
 
 // Loop through the income and expense collections in the database, and store the data in local variables.
@@ -484,7 +489,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
                     for (doc in snapshots) {
                         doc.getString("source")?.let {
                             doc.getDouble("value")
-                                ?.let { it1 -> Income(it, it1) }
+                                ?.let { it1 -> Input(it, it1) }
                         }?.let { data.incomesDb.add(it) }
                         data.incomesDbKeys.add(doc.id)
                     }
@@ -505,7 +510,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
                     for (doc in snapshots) {
                         doc.getString("source")?.let {
                             doc.getDouble("value")
-                                ?.let { it1 -> Expense(it, it1) }
+                                ?.let { it1 -> Input(it, it1) }
                         }?.let { data.expensesDb.add(it) }
                         data.expensesDbKeys.add(doc.id)
                     }
@@ -515,14 +520,14 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
 }
 
 // Edit an income in the database
-fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Income) {
+fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Input) {
     val docRef = db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1])
     docRef.update("source", newData.source, "value", newData.value)
     println("Income edited.")
 }
 
 // Edit an expense in the database
-fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Expense) {
+fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Input) {
     val docRef = db.collection("${data.year}").document("${data.month}").collection("expense").document(data.incomesDbKeys[index - 1])
     docRef.update("source", newData.source, "value", newData.value)
     println("Expense edited.")
