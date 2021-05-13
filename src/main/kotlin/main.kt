@@ -3,6 +3,7 @@ import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.firestore.*
 import java.io.FileInputStream
 import java.math.BigDecimal
+import java.time.Year
 
 // data classes to hold data
 data class Data(
@@ -45,16 +46,12 @@ fun main() {
 
         // Program loop
         val data = Data()
-        println("Month (1-12): ")
-        var month = readLine()!!.toLong()
-        if (month !in 1..12) {
-            println("Invalid month. Please try again:")
-            month = readLine()!!.toLong()
+
+        // Get Period
+        var validPeriod: Boolean = getPeriod(data)
+        while (!validPeriod) {
+            validPeriod = getPeriod(data)
         }
-        println("Year (YYYY): ")
-        val year = readLine()!!.toLong()
-        data.month = month
-        data.year = year
 
         // Initialize Database and get current data
         val db: Firestore = initializeDb(data)
@@ -92,10 +89,56 @@ fun main() {
 
 }
 
-
 //***********************************************************************
 //*********************** PROGRAM BASIC FUNCTIONS ***********************
 //***********************************************************************
+fun getPeriod(data: Data): Boolean {
+    println("Select Period (MM-YYYY): ")
+    var periodRaw = readLine()
+    var length: Boolean = checkLength(periodRaw)
+    var dash: Boolean = checkDash(periodRaw)
+    var individualLength: Boolean = checkIndividualLength(periodRaw)
+    var allNumbers: Boolean = checkIfNumbers(periodRaw)
+    var validNumbers: Boolean = checkIfValidNumbers(periodRaw)
+    while (!length || !dash || !individualLength || !allNumbers || !validNumbers) {
+        println("Invalid Period. Please use the format MM-YYYY: TOTAL LENGTH")
+        periodRaw = readLine()
+        length = checkLength(periodRaw)
+        dash = checkDash(periodRaw)
+        individualLength = checkIndividualLength(periodRaw)
+        allNumbers = checkIfNumbers(periodRaw)
+        validNumbers = checkIfValidNumbers(periodRaw)
+    }
+    if (periodRaw != null) {
+        val period = periodRaw.split("-")
+        data.month = period[0].toLong()
+        data.year = period[1].toLong()
+    }
+}
+
+fun checkIfValidNumbers(periodRaw: String?): Boolean {
+    val period = periodRaw!!.split("-")
+    return period[0].toLong() in 1..12 && period[1].toLong() <= Year.now().value
+}
+
+fun checkIfNumbers(periodRaw: String?): Boolean {
+    val period = periodRaw!!.split("-")
+    return period[0].toDoubleOrNull() != null && period[1].toDoubleOrNull() != null
+}
+
+fun checkIndividualLength(periodRaw: String?): Boolean {
+    val period = periodRaw!!.split("-")
+    return period[0].length == 2 && period[1].length == 4
+}
+
+fun checkDash(periodRaw: String?): Boolean {
+    return periodRaw?.contains("-")!!
+}
+
+fun checkLength(periodRaw: String?): Boolean {
+    return periodRaw?.length == 7
+}
+
 fun incomes(db: Firestore, data: Data) {
     var incomeScreen = true
     while (incomeScreen) {
@@ -591,4 +634,3 @@ fun deleteAllExpenses(db: Firestore, data: Data) {
         println("Error deleting collection : " + e.message)
     }
 }
-
