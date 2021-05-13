@@ -6,6 +6,8 @@ import java.math.BigDecimal
 
 // data classes to hold data
 data class Data(
+    var month: Long = 0L,
+    var year: Long = 0L,
     var incomesDb: MutableList<Income> = mutableListOf(),
     var expensesDb: MutableList<Expense> = mutableListOf(),
     var incomesDbKeys: MutableList<String> = mutableListOf(),
@@ -26,37 +28,60 @@ data class Expense(
 //************************** PROGRAM MAIN LOOP **************************
 //***********************************************************************
 fun main() {
+    // Welcome message
+    println("Welcome! Let's take care of Business.")
+
     // Variable to keep the program running
     var programActive = true
 
-    // Initialize Database and get current data
-    val data = Data()
-    val db: Firestore = initializeDb(data)
-
-    // Program loop
-    println("Welcome! Let's take care of Business.")
     while (programActive) {
-        var option: Int?
-        val message =
-            """SELECT AN OPTION.
+        // Variable to keep the current month/year active
+        var monthYearActive = true
+
+        // Program loop
+        val data = Data()
+        println("Month (1-12): ")
+        var month = readLine()!!.toLong()
+        if (month !in 1..12) {
+            println("Invalid month. Please try again:")
+            month = readLine()!!.toLong()
+        }
+        println("Year (YYYY): ")
+        val year = readLine()!!.toLong()
+        data.month = month
+        data.year = year
+
+        // Initialize Database and get current data
+        val db: Firestore = initializeDb(data)
+
+        while (monthYearActive) {
+            var option: Int?
+            val message =
+                """SELECT AN OPTION.
             1) Incomes
             2) Expenses
             3) Display Summary
+            7) Change Month/Year
             8) Delete All Data
             9) Exit Program
             """.trimMargin()
-        println(message)
-        option = readLine()?.toIntOrNull()
-        while (option !in 1..3 && option !in 8..9 || option == null) {
-            println("Invalid option. Please try again:")
+            println(message)
             option = readLine()?.toIntOrNull()
-        }
-        when (option) {
-            1 -> incomes(db, data) //addIncomes(db)
-            2 -> expenses(db, data) //addExpenses(db)
-            3 -> displayFinalBalance(data)
-            8 -> deleteAll(db, data)
-            9 -> programActive = false
+            while (option !in 1..3 && option !in 7..9 || option == null) {
+                println("Invalid option. Please try again:")
+                option = readLine()?.toIntOrNull()
+            }
+            when (option) {
+                1 -> incomes(db, data) //addIncomes(db)
+                2 -> expenses(db, data) //addExpenses(db)
+                3 -> displayFinalBalance(data)
+                7 -> monthYearActive = false
+                8 -> deleteAll(db, data)
+                9 -> {
+                    programActive = false
+                    monthYearActive = false
+                }
+            }
         }
     }
 
@@ -84,7 +109,7 @@ fun incomes(db: Firestore, data: Data) {
             option = readLine()?.toIntOrNull()
         }
         when (option) {
-            1 -> addIncomes(db)
+            1 -> addIncomes(db, data)
             2 -> editIncome(db, data)
             3 -> deleteIncome(db, data)
             9 -> incomeScreen = false
@@ -110,7 +135,7 @@ fun expenses(db: Firestore, data: Data) {
             option = readLine()?.toIntOrNull()
         }
         when (option) {
-            1 -> addExpenses(db)
+            1 -> addExpenses(db, data)
             2 -> editExpense(db, data)
             3 -> deleteExpense(db, data)
             9 -> expenseScreen = false
@@ -118,7 +143,7 @@ fun expenses(db: Firestore, data: Data) {
     }
 }
 
-fun addIncomes(db: Firestore) {
+fun addIncomes(db: Firestore, data: Data) {
     // Get the new income source and value
     println("ADD INCOMES")
     var status = ""
@@ -143,7 +168,7 @@ fun addIncomes(db: Firestore) {
         }
 
         // Call the database to add the new income
-        addIncomeDb(db, Income(source, value))
+        addIncomeDb(db, Income(source, value), data)
 
         // Ask if user would like to add another income
         println("Would you like to add another income? y/n")
@@ -155,7 +180,7 @@ fun addIncomes(db: Firestore) {
     }
 }
 
-fun addExpenses(db: Firestore) {
+fun addExpenses(db: Firestore, data: Data) {
     // Get the new expense source and value
     println("ADD EXPENSES")
     var status = ""
@@ -180,7 +205,7 @@ fun addExpenses(db: Firestore) {
         }
 
         // Call the database to add the new expense
-        addExpenseDb(db, Expense(source, value))
+        addExpenseDb(db, Expense(source, value), data)
 
         // Ask if user would like to add another expense
         println("Would you like to add another expense? y/n")
@@ -276,8 +301,8 @@ fun editIncome(db: Firestore, data: Data) {
                 return
             }
         }
-        
-        editIncomeDb(db, data.incomesDbKeys[index - 1], Income(source, value))
+
+        editIncomeDb(db, data, index, Income(source, value))
 
         println("Would you like to edit another income? y/n")
         status = readLine()!!.toLowerCase()
@@ -330,7 +355,7 @@ fun editExpense(db: Firestore, data: Data) {
             }
         }
 
-        editExpenseDb(db, data.expensesDbKeys[index - 1], Expense(source, value))
+        editExpenseDb(db, data, index, Expense(source, value))
 
         println("Would you like to edit another expense? y/n")
         status = readLine()!!.toLowerCase()
@@ -376,7 +401,7 @@ fun deleteIncome(db: Firestore, data: Data) {
         confirm = readLine()!!.toLowerCase()
     }
     if (confirm == "y") {
-        deleteIncomeDb(db, data.incomesDbKeys[index - 1])
+        deleteIncomeDb(db, data, index)
     }
 }
 
@@ -407,7 +432,7 @@ fun deleteExpense(db: Firestore, data: Data) {
         confirm = readLine()!!.toLowerCase()
     }
     if (confirm == "y") {
-        deleteExpenseDb(db, data.expensesDbKeys[index - 1])
+        deleteExpenseDb(db, data, index)
     }
 }
 
@@ -428,31 +453,31 @@ fun initializeDb(data: Data): Firestore {
 }
 
 // Push an income to the database
-fun addIncomeDb(db: Firestore, income: Income) {
+fun addIncomeDb(db: Firestore, income: Income, data: Data) {
     val incomeDb = HashMap<String, Any>()
     incomeDb["source"] = income.source
     incomeDb["value"] = income.value
-    db.collection("income").document().set(incomeDb)
+    db.collection("${data.year}").document("${data.month}").collection("income").document().set(incomeDb)
 }
 
 // Push an expense to the database
-fun addExpenseDb(db: Firestore?, expense: Expense) {
+fun addExpenseDb(db: Firestore, expense: Expense, data: Data) {
     val expenseDb = HashMap<String, Any>()
     expenseDb["source"] = expense.source
     expenseDb["value"] = expense.value
-    db?.collection("expense")?.document()?.set(expenseDb)
+    db.collection("${data.year}").document("${data.month}").collection("income").document().set(expenseDb)
 }
 
 // Loop through the income and expense collections in the database, and store the data in local variables.
 // The 'onEvent' function will listen to any changes on the database, and automatically retrieve the changed data.
 fun retrieveAllDocuments(db: Firestore?, data: Data) {
-    db?.collection("income")
+    db?.collection("${data.year}")?.document("${data.month}")?.collection("income")
         ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
             override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
                 data.incomesDbKeys.clear()
                 data.incomesDb.clear()
                 if (e != null) {
-                    System.err.println("Listen failed:$e")
+                    println("Listen failed:$e")
                     return
                 }
                 if (snapshots != null) {
@@ -467,7 +492,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
             }
         })
 
-    db?.collection("expense")
+    db?.collection("${data.year}")?.document("${data.month}")?.collection("expense")
         ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
             override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
                 data.expensesDb.clear()
@@ -490,28 +515,28 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
 }
 
 // Edit an income in the database
-fun editIncomeDb(db: Firestore, keyToEdit: String, newData: Income) {
-    val docRef = db.collection("income").document(keyToEdit)
+fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Income) {
+    val docRef = db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1])
     docRef.update("source", newData.source, "value", newData.value)
     println("Income edited.")
 }
 
 // Edit an expense in the database
-fun editExpenseDb(db: Firestore, keyToEdit: String, newData: Expense) {
-    val docRef = db.collection("expense").document(keyToEdit)
+fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Expense) {
+    val docRef = db.collection("${data.year}").document("${data.month}").collection("expense").document(data.incomesDbKeys[index - 1])
     docRef.update("source", newData.source, "value", newData.value)
     println("Expense edited.")
 }
 
 // Delete an income in the database
-fun deleteIncomeDb(db: Firestore, keyToDelete: String) {
-    db.collection("income").document(keyToDelete).delete()
+fun deleteIncomeDb(db: Firestore, data: Data, index: Int) {
+    db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1]).delete()
     println("Income deleted.")
 }
 
 // Delete an expense in the database
-fun deleteExpenseDb(db: Firestore, keyToDelete: String) {
-    db.collection("expense").document(keyToDelete).delete()
+fun deleteExpenseDb(db: Firestore, data: Data, index: Int) {
+    db.collection("${data.year}").document("${data.month}").collection("expense").document(data.expensesDbKeys[index - 1]).delete()
     println("Expense deleted.")
 }
 
@@ -531,34 +556,34 @@ fun deleteAll(db: Firestore, data: Data) {
     if (status == "n") {
         return
     }
-    deleteAllIncomes(db)
-    deleteAllExpenses(db)
+    deleteAllIncomes(db, data)
+    deleteAllExpenses(db, data)
     println("All data has been deleted.")
 }
 
 // Delete all incomes in the database
-fun deleteAllIncomes(db: Firestore) {
+fun deleteAllIncomes(db: Firestore, data: Data) {
     try {
-        val incomes: ApiFuture<QuerySnapshot> = db.collection("income").get()
+        val incomes: ApiFuture<QuerySnapshot> = db.collection("${data.year}").document("${data.month}").collection("income").get()
         val documents = incomes.get().documents
         for (document in documents) {
             document.reference.delete()
         }
     } catch (e: Exception) {
-        System.err.println("Error deleting collection : " + e.message)
+        println("Error deleting collection : " + e.message)
     }
 }
 
 // Delete all expenses in the database
-fun deleteAllExpenses(db: Firestore) {
+fun deleteAllExpenses(db: Firestore, data: Data) {
     try {
-        val expenses: ApiFuture<QuerySnapshot> = db.collection("expense").get()
+        val expenses: ApiFuture<QuerySnapshot> = db.collection("${data.year}").document("${data.month}").collection("expense").get()
         val documents = expenses.get().documents
         for (document in documents) {
             document.reference.delete()
         }
     } catch (e: Exception) {
-        System.err.println("Error deleting collection : " + e.message)
+        println("Error deleting collection : " + e.message)
     }
 }
 
