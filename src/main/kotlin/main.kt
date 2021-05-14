@@ -20,16 +20,6 @@ data class Input(
     val value: Double
 )
 
-//data class Income(
-//    val source: String,
-//    val value: Double
-//)
-
-//data class Expense(
-//    val source: String,
-//    val value: Double
-//)
-
 //***********************************************************************
 //************************** PROGRAM MAIN LOOP **************************
 //***********************************************************************
@@ -94,26 +84,34 @@ fun main() {
 //***********************************************************************
 fun getPeriod(data: Data): Boolean {
     println("Select Period (MM-YYYY): ")
-    var periodRaw = readLine()
-    var length: Boolean = checkLength(periodRaw)
-    var dash: Boolean = checkDash(periodRaw)
-    var individualLength: Boolean = checkIndividualLength(periodRaw)
-    var allNumbers: Boolean = checkIfNumbers(periodRaw)
-    var validNumbers: Boolean = checkIfValidNumbers(periodRaw)
-    while (!length || !dash || !individualLength || !allNumbers || !validNumbers) {
-        println("Invalid Period. Please use the format MM-YYYY: TOTAL LENGTH")
-        periodRaw = readLine()
-        length = checkLength(periodRaw)
-        dash = checkDash(periodRaw)
-        individualLength = checkIndividualLength(periodRaw)
-        allNumbers = checkIfNumbers(periodRaw)
-        validNumbers = checkIfValidNumbers(periodRaw)
+    val periodRaw = readLine()
+    if (!checkLength(periodRaw)) {
+        println("Invalid Period. Please try again.")
+        return false
     }
+    if (!checkDash(periodRaw)) {
+        println("Invalid Period. Please try again.")
+        return false
+    }
+    if (!checkIndividualLength(periodRaw)) {
+        println("Invalid Period. Please try again.")
+        return false
+    }
+    if (!checkIfNumbers(periodRaw)) {
+        println("Invalid Period. Please try again.")
+        return false
+    }
+    if (!checkIfValidNumbers(periodRaw)) {
+        println("Invalid Period. Please try again.")
+        return false
+    }
+
     if (periodRaw != null) {
         val period = periodRaw.split("-")
         data.month = period[0].toLong()
         data.year = period[1].toLong()
     }
+    return true
 }
 
 fun checkIfValidNumbers(periodRaw: String?): Boolean {
