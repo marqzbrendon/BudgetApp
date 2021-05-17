@@ -9,10 +9,12 @@ import java.time.Year
 data class Data(
     var month: Long = 0L,
     var year: Long = 0L,
-    var incomesDb: MutableList<Input> = mutableListOf(),
-    var expensesDb: MutableList<Input> = mutableListOf(),
-    var incomesDbKeys: MutableList<String> = mutableListOf(),
-    var expensesDbKeys: MutableList<String> = mutableListOf()
+    val categories: MutableList<String> = mutableListOf(),
+    val categoriesId: MutableList<String> = mutableListOf(),
+    val incomesDb: MutableList<Input> = mutableListOf(),
+    val expensesDb: MutableList<Input> = mutableListOf(),
+    val incomesDbKeys: MutableList<String> = mutableListOf(),
+    val expensesDbKeys: MutableList<String> = mutableListOf()
 )
 
 data class Input(
@@ -53,20 +55,22 @@ fun main() {
             1) Incomes
             2) Expenses
             3) Display Summary
+            4) Manage Categories
             7) Change Month/Year
             8) Delete All Data
             9) Exit Program
             """.trimMargin()
             println(message)
             option = readLine()?.toIntOrNull()
-            while (option !in 1..3 && option !in 7..9 || option == null) {
+            while (option !in 1..4 && option !in 7..9 || option == null) {
                 println("Invalid option. Please try again:")
                 option = readLine()?.toIntOrNull()
             }
             when (option) {
-                1 -> incomes(db, data)
-                2 -> expenses(db, data)
+                1 -> manageIncomes(db, data)
+                2 -> manageExpenses(db, data)
                 3 -> displayFinalBalance(data)
+                4 -> manageCategories(db, data)
                 7 -> monthYearActive = false
                 8 -> deleteAll(db, data)
                 9 -> {
@@ -137,7 +141,7 @@ fun checkLength(periodRaw: String?): Boolean {
     return periodRaw?.length == 7
 }
 
-fun incomes(db: Firestore, data: Data) {
+fun manageIncomes(db: Firestore, data: Data) {
     var incomeScreen = true
     while (incomeScreen) {
         var option: Int?
@@ -146,11 +150,12 @@ fun incomes(db: Firestore, data: Data) {
             1) Add an Income
             2) Edit an Income
             3) Delete an Income
+            4) Display all Incomes
             9) Return to Main Menu
             """.trimMargin()
         println(message)
         option = readLine()?.toIntOrNull()
-        while (option !in 1..3 && option != 9 || option == null) {
+        while (option !in 1..4 && option != 9 || option == null) {
             println("Invalid option. Please try again:")
             option = readLine()?.toIntOrNull()
         }
@@ -158,12 +163,13 @@ fun incomes(db: Firestore, data: Data) {
             1 -> addIncomes(db, data)
             2 -> editIncome(db, data)
             3 -> deleteIncome(db, data)
+            4 -> displayIncome(data, false)
             9 -> incomeScreen = false
         }
     }
 }
 
-fun expenses(db: Firestore, data: Data) {
+fun manageExpenses(db: Firestore, data: Data) {
     var expenseScreen = true
     while (expenseScreen) {
         var option: Int?
@@ -172,11 +178,12 @@ fun expenses(db: Firestore, data: Data) {
             1) Add an Expense
             2) Edit an Expense
             3) Delete an Expense
+            4) Display All Expenses
             9) Return to Main Menu
             """.trimMargin()
         println(message)
         option = readLine()?.toIntOrNull()
-        while (option !in 1..3 && option != 9 || option == null) {
+        while (option !in 1..4 && option != 9 || option == null) {
             println("Invalid option. Please try again:")
             option = readLine()?.toIntOrNull()
         }
@@ -184,7 +191,36 @@ fun expenses(db: Firestore, data: Data) {
             1 -> addExpenses(db, data)
             2 -> editExpense(db, data)
             3 -> deleteExpense(db, data)
+            4 -> displayExpense(data, false)
             9 -> expenseScreen = false
+        }
+    }
+}
+
+fun manageCategories(db: Firestore, data: Data) {
+    var categoriesScreen = true
+    while (categoriesScreen) {
+        var option: Int?
+        val message = """
+            CATEGORIES MENU.
+            1) Add a Category
+            2) Edit a Category
+            3) Delete a Category
+            4) Display All Categories
+            9) Return to Main Menu
+            """.trimMargin()
+        println(message)
+        option = readLine()?.toIntOrNull()
+        while (option !in 1..4 && option != 9 || option == null) {
+            println("Invalid option. Please try again:")
+            option = readLine()?.toIntOrNull()
+        }
+        when (option) {
+            1 -> addCategory(db)
+            2 -> editCategory(db, data)
+            3 -> deleteCategory(db, data)
+            4 -> displayCategories(data)
+            9 -> categoriesScreen = false
         }
     }
 }
@@ -231,7 +267,7 @@ fun addExpenses(db: Firestore, data: Data) {
     println("ADD EXPENSES")
     var status = ""
     while (status != "n") {
-        println("Expense Source (to cancel, type 0: ")
+        println("Expense Source (to cancel, type 0): ")
         val source = readLine().toString()
         if (source == "0") {
             return
@@ -258,6 +294,29 @@ fun addExpenses(db: Firestore, data: Data) {
         status = readLine()!!.toLowerCase()
         while (status != "n" && status != "y") {
             println("Invalid input. Would you like to add another expense? y/n")
+            status = readLine()!!.toLowerCase()
+        }
+    }
+}
+
+fun addCategory(db: Firestore) {
+    println("ADD CATEGORIES")
+    var status = ""
+    while (status != "n") {
+        println("Category Name (to cancel, type 0): ")
+        val name = readLine().toString()
+        if (name == "0") {
+            return
+        }
+
+        // Call the database to add the new category
+        addCategoryDb(db, name)
+
+        // Ask if user would like to add another category
+        println("Would you like to add another category? y/n")
+        status = readLine()!!.toLowerCase()
+        while (status != "n" && status != "y") {
+            println("Invalid input. Would you like to add another category? y/n")
             status = readLine()!!.toLowerCase()
         }
     }
@@ -294,6 +353,13 @@ fun displayExpense(data: Data, displayCancel: Boolean): Double {
     }
     println("EXPENSES TOTAL: $${expensesTotal}")
     return expensesTotal
+}
+
+fun displayCategories(data: Data) {
+    println("YOUR CATEGORIES:")
+    for (i in data.categories.indices) {
+        println("${i + 1}. ${data.categories[i]}")
+    }
 }
 
 // Display both the income total and the expanse total, and subtract their values
@@ -412,13 +478,43 @@ fun editExpense(db: Firestore, data: Data) {
     }
 }
 
-// Validates the input for income and expanse values
-fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
-    val scale = number?.stripTrailingZeros()?.scale()
-    return if (scale != null) {
-        if (scale > 0) scale else 0
-    } else
-        0
+fun editCategory(db: Firestore, data: Data) {
+    if (data.categories.size < 1) {
+        println("There are no categories to edit.")
+        return
+    }
+
+    var status = ""
+    while (status != "n") {
+        println("Which category would you like to edit? (Select a number from 1 to ${data.categories.size}, or 0 to cancel)")
+        displayCategories(data)
+        var index: Int = readLine()?.toIntOrNull()!!
+        if (index == 0) {
+            return
+        }
+        while (index !in 1..data.categories.size) {
+            println("Invalid option. Please select a number from 1 to ${data.categories.size}, or 0 to cancel")
+            index = readLine()?.toIntOrNull()!!
+            if (index == 0) {
+                return
+            }
+        }
+
+        println("Category Name (to cancel, enter 0): ")
+        val name = readLine().toString()
+        if (name == "0") {
+            return
+        }
+
+        editCategoryDb(db, data, index, name)
+
+        println("Would you like to edit another category? y/n")
+        status = readLine()!!.toLowerCase()
+        while (status != "n" && status != "y") {
+            println("Invalid input. Would you like to add another category? y/n")
+            status = readLine()!!.toLowerCase()
+        }
+    }
 }
 
 // Delete any income
@@ -440,7 +536,7 @@ fun deleteIncome(db: Firestore, data: Data) {
             return
         }
     }
-    println("The income \"${data.incomesDb[index - 1].source}\" will be deleted. Do you with to continue? y/n")
+    println("The income \"${data.incomesDb[index - 1].source}\" will be deleted. Do you wish to continue? y/n")
     var confirm = readLine()!!.toLowerCase()
     while (confirm != "n" && confirm != "y") {
         println("Invalid input. Would you like to delete \"${data.incomesDb[index - 1].source}\"? y/n")
@@ -471,7 +567,7 @@ fun deleteExpense(db: Firestore, data: Data) {
             return
         }
     }
-    println("The expense \"${data.expensesDb[index - 1].source}\" will be deleted. Do you with to continue? y/n")
+    println("The expense \"${data.expensesDb[index - 1].source}\" will be deleted. Do you wish to continue? y/n")
     var confirm = readLine()!!.toLowerCase()
     while (confirm != "n" && confirm != "y") {
         println("Invalid input. Would you like to delete \"${data.expensesDb[index - 1].source}\"? y/n")
@@ -480,6 +576,44 @@ fun deleteExpense(db: Firestore, data: Data) {
     if (confirm == "y") {
         deleteExpenseDb(db, data, index)
     }
+}
+
+fun deleteCategory(db: Firestore, data: Data) {
+    if (data.categories.size < 1) {
+        println("There are no categories to delete.")
+        return
+    }
+    println("Which category would you like to delete? (Select a number from 1 to ${data.categories.size}, or 0 to cancel)")
+    displayCategories(data)
+    var index: Int = readLine()?.toIntOrNull()!!
+    if (index == 0) {
+        return
+    }
+    while (index !in 1..data.categories.size) {
+        println("Invalid option. Please select a number from 1 to ${data.categories.size}, or 0 to cancel")
+        index = readLine()?.toIntOrNull()!!
+        if (index == 0) {
+            return
+        }
+    }
+    println("The category \"${data.categories[index - 1]}\" will be deleted. Do you wish to continue? y/n")
+    var confirm = readLine()!!.toLowerCase()
+    while (confirm != "n" && confirm != "y") {
+        println("Invalid input. Would you like to delete \"${data.categories[index - 1]}\"? y/n")
+        confirm = readLine()!!.toLowerCase()
+    }
+    if (confirm == "y") {
+        deleteCategoryDb(db, data, index)
+    }
+}
+
+// Validates the input for income and expanse values
+fun getNumberOfDecimalPlaces(number: BigDecimal?): Int {
+    val scale = number?.stripTrailingZeros()?.scale()
+    return if (scale != null) {
+        if (scale > 0) scale else 0
+    } else
+        0
 }
 
 //***********************************************************************
@@ -514,50 +648,10 @@ fun addExpenseDb(db: Firestore, expense: Input, data: Data) {
     db.collection("${data.year}").document("${data.month}").collection("expense").document().set(expenseDb)
 }
 
-// Loop through the income and expense collections in the database, and store the data in local variables.
-// The 'onEvent' function will listen to any changes on the database, and automatically retrieve the changed data.
-fun retrieveAllDocuments(db: Firestore?, data: Data) {
-    db?.collection("${data.year}")?.document("${data.month}")?.collection("income")
-        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
-            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
-                data.incomesDbKeys.clear()
-                data.incomesDb.clear()
-                if (e != null) {
-                    println("Listen failed:$e")
-                    return
-                }
-                if (snapshots != null) {
-                    for (doc in snapshots) {
-                        doc.getString("source")?.let {
-                            doc.getDouble("value")
-                                ?.let { it1 -> Input(it, it1) }
-                        }?.let { data.incomesDb.add(it) }
-                        data.incomesDbKeys.add(doc.id)
-                    }
-                }
-            }
-        })
-
-    db?.collection("${data.year}")?.document("${data.month}")?.collection("expense")
-        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
-            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
-                data.expensesDb.clear()
-                data.expensesDbKeys.clear()
-                if (e != null) {
-                    System.err.println("Listen failed:$e")
-                    return
-                }
-                if (snapshots != null) {
-                    for (doc in snapshots) {
-                        doc.getString("source")?.let {
-                            doc.getDouble("value")
-                                ?.let { it1 -> Input(it, it1) }
-                        }?.let { data.expensesDb.add(it) }
-                        data.expensesDbKeys.add(doc.id)
-                    }
-                }
-            }
-        })
+fun addCategoryDb(db: Firestore, name: String) {
+    val categoryDb = HashMap<String, Any>()
+    categoryDb["name"] = name
+    db.collection("categories").document().set(categoryDb)
 }
 
 // Edit an income in the database
@@ -574,6 +668,12 @@ fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Input) {
     println("Expense edited.")
 }
 
+fun editCategoryDb(db: Firestore, data: Data, index: Int, name: String) {
+    val docRef = db.collection("categories").document(data.categoriesId[index - 1])
+    docRef.update("name", name)
+    println("Category edited.")
+}
+
 // Delete an income in the database
 fun deleteIncomeDb(db: Firestore, data: Data, index: Int) {
     db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1]).delete()
@@ -584,6 +684,11 @@ fun deleteIncomeDb(db: Firestore, data: Data, index: Int) {
 fun deleteExpenseDb(db: Firestore, data: Data, index: Int) {
     db.collection("${data.year}").document("${data.month}").collection("expense").document(data.expensesDbKeys[index - 1]).delete()
     println("Expense deleted.")
+}
+
+fun deleteCategoryDb(db: Firestore, data: Data, index: Int) {
+    db.collection("categories").document(data.categoriesId[index - 1]).delete()
+    println("Category deleted.")
 }
 
 // Calls two functions, one for the income and the other for the expense collection,
@@ -631,4 +736,67 @@ fun deleteAllExpenses(db: Firestore, data: Data) {
     } catch (e: Exception) {
         println("Error deleting collection : " + e.message)
     }
+}
+
+// Loop through the income and expense collections in the database, and store the data in local variables.
+// The 'onEvent' function will listen to any changes on the database, and automatically retrieve the changed data.
+fun retrieveAllDocuments(db: Firestore?, data: Data) {
+    db?.collection("${data.year}")?.document("${data.month}")?.collection("income")
+        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
+            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
+                data.incomesDbKeys.clear()
+                data.incomesDb.clear()
+                if (e != null) {
+                    println("Listen failed:$e")
+                    return
+                }
+                if (snapshots != null) {
+                    for (doc in snapshots) {
+                        doc.getString("source")?.let {
+                            doc.getDouble("value")
+                                ?.let { it1 -> Input(it, it1) }
+                        }?.let { data.incomesDb.add(it) }
+                        data.incomesDbKeys.add(doc.id)
+                    }
+                }
+            }
+        })
+
+    db?.collection("${data.year}")?.document("${data.month}")?.collection("expense")
+        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
+            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
+                data.expensesDb.clear()
+                data.expensesDbKeys.clear()
+                if (e != null) {
+                    System.err.println("Listen failed:$e")
+                    return
+                }
+                if (snapshots != null) {
+                    for (doc in snapshots) {
+                        doc.getString("source")?.let {
+                            doc.getDouble("value")
+                                ?.let { it1 -> Input(it, it1) }
+                        }?.let { data.expensesDb.add(it) }
+                        data.expensesDbKeys.add(doc.id)
+                    }
+                }
+            }
+        })
+
+    db?.collection("categories")
+        ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
+            override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
+                data.categories.clear()
+                if (e != null) {
+                    println("Listen failed:$e")
+                    return
+                }
+                if (snapshots != null) {
+                    for (doc in snapshots) {
+                        doc.getString("name")?.let { data.categories.add(it) }
+                        data.categoriesId.add(doc.id)
+                    }
+                }
+            }
+        })
 }
