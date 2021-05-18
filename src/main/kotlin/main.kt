@@ -5,21 +5,28 @@ import java.io.FileInputStream
 import java.math.BigDecimal
 import java.time.Year
 
+
 // data classes to hold data
 data class Data(
     var month: Long = 0L,
     var year: Long = 0L,
     val categories: MutableList<String> = mutableListOf(),
     val categoriesId: MutableList<String> = mutableListOf(),
-    val incomesDb: MutableList<Input> = mutableListOf(),
-    val expensesDb: MutableList<Input> = mutableListOf(),
+    val incomesDb: MutableList<Income> = mutableListOf(),
+    val expensesDb: MutableList<Expense> = mutableListOf(),
     val incomesDbKeys: MutableList<String> = mutableListOf(),
     val expensesDbKeys: MutableList<String> = mutableListOf()
 )
 
-data class Input(
+data class Income(
     val source: String,
     val value: Double
+)
+
+data class Expense(
+    val source: String,
+    val value: Double,
+    val category: String
 )
 
 //***********************************************************************
@@ -54,8 +61,8 @@ fun main() {
                 """SELECT AN OPTION.
             1) Incomes
             2) Expenses
-            3) Display Summary
-            4) Manage Categories
+            3) Manage Categories
+            4) Display Summary
             7) Change Month/Year
             8) Delete All Data
             9) Exit Program
@@ -69,8 +76,8 @@ fun main() {
             when (option) {
                 1 -> manageIncomes(db, data)
                 2 -> manageExpenses(db, data)
-                3 -> displayFinalBalance(data)
-                4 -> manageCategories(db, data)
+                3 -> manageCategories(db, data)
+                4 -> displayFinalBalance(data)
                 7 -> monthYearActive = false
                 8 -> deleteAll(db, data)
                 9 -> {
@@ -216,7 +223,7 @@ fun manageCategories(db: Firestore, data: Data) {
             option = readLine()?.toIntOrNull()
         }
         when (option) {
-            1 -> addCategory(db)
+            1 -> addCategory(db, false)
             2 -> editCategory(db, data)
             3 -> deleteCategory(db, data)
             4 -> displayCategories(data)
@@ -230,13 +237,13 @@ fun addIncomes(db: Firestore, data: Data) {
     println("ADD INCOMES")
     var status = ""
     while (status != "n") {
-        println("Income Source (to cancel, type 0): ")
+        println("Income Source (to cancel the operation, type 0): ")
         val source = readLine().toString()
         if (source == "0") {
             return
         }
 
-        println("Income Value (to cancel, type 0): ")
+        println("Income Value (to cancel the operation, type 0): ")
         var value = readLine()?.toDoubleOrNull()
         if (value == 0.0) {
             return
@@ -250,7 +257,7 @@ fun addIncomes(db: Firestore, data: Data) {
         }
 
         // Call the database to add the new income
-        addIncomeDb(db, Input(source, value), data)
+        addIncomeDb(db, Income(source, value), data)
 
         // Ask if user would like to add another income
         println("Would you like to add another income? y/n")
@@ -267,13 +274,17 @@ fun addExpenses(db: Firestore, data: Data) {
     println("ADD EXPENSES")
     var status = ""
     while (status != "n") {
-        println("Expense Source (to cancel, type 0): ")
-        val source = readLine().toString()
+        println("Expense Source (to cancel the operation, type 0): ")
+        var source = readLine()
         if (source == "0") {
             return
         }
+        while (source == null) {
+            println("Invalid value. Please try again:")
+            source = readLine()
+        }
 
-        println("Expense Value (to cancel, type 0): ")
+        println("Expense Value (to cancel the operation, type 0): ")
         var value = readLine()?.toDoubleOrNull()
         if (value == 0.0) {
             return
@@ -286,8 +297,39 @@ fun addExpenses(db: Firestore, data: Data) {
             }
         }
 
+        println("Would you like to add a category to this expense? (y/n) ")
+        var newCategory = readLine()
+        while (newCategory != "y" && newCategory != "n") {
+            println("Invalid value. Please try again:")
+            newCategory = readLine()
+        }
+
+        var categoryName: String
+        if (newCategory == "n") {
+            categoryName = ""
+        } else {
+            displayCategories(data)
+            println("Select Category (type 0 to cancel the operation, or type 'new' to create a new category): ")
+            val category = readLine()
+            if (category == "new") {
+                categoryName = addCategory(db, true)
+            } else {
+                var categoryIndex = category?.toIntOrNull()
+                if (categoryIndex == 0) {
+                    return
+                }
+                while (categoryIndex !in 1..data.categories.size || categoryIndex == null) {
+                    println("Invalid value. Please try again:")
+                    categoryIndex = readLine()?.toIntOrNull()
+                }
+                categoryName = data.categories[categoryIndex - 1]
+            }
+        }
+
+
         // Call the database to add the new expense
-        addExpenseDb(db, Input(source, value), data)
+        addExpenseDb(db, Expense(source, value, categoryName), data)
+
 
         // Ask if user would like to add another expense
         println("Would you like to add another expense? y/n")
@@ -299,27 +341,33 @@ fun addExpenses(db: Firestore, data: Data) {
     }
 }
 
-fun addCategory(db: Firestore) {
+fun addCategory(db: Firestore, addOneOnly: Boolean): String {
     println("ADD CATEGORIES")
     var status = ""
+    var name = ""
     while (status != "n") {
-        println("Category Name (to cancel, type 0): ")
-        val name = readLine().toString()
+        println("Category Name (to cancel the operation, type 0): ")
+        name = readLine().toString()
         if (name == "0") {
-            return
+            return ""
         }
 
         // Call the database to add the new category
         addCategoryDb(db, name)
 
-        // Ask if user would like to add another category
-        println("Would you like to add another category? y/n")
-        status = readLine()!!.toLowerCase()
-        while (status != "n" && status != "y") {
-            println("Invalid input. Would you like to add another category? y/n")
+        if (!addOneOnly) {
+            // Ask if user would like to add another category
+            println("Would you like to add another category? y/n")
             status = readLine()!!.toLowerCase()
+            while (status != "n" && status != "y") {
+                println("Invalid input. Would you like to add another category? y/n")
+                status = readLine()!!.toLowerCase()
+            }
+        } else {
+            status = "n"
         }
     }
+    return name
 }
 
 // Display the list of incomes and their total
@@ -345,7 +393,7 @@ fun displayExpense(data: Data, displayCancel: Boolean): Double {
     var expensesTotal = 0.0
     for (i in data.expensesDb.indices) {
         expensesTotal += data.expensesDb[i].value
-        println("${i + 1}. ${data.expensesDb[i].source} - $${data.expensesDb[i].value}")
+        println("${i + 1}. ${data.expensesDb[i].source} - $${data.expensesDb[i].value} (${data.expensesDb[i].category})")
     }
     if (displayCancel) {
         println("\n0. Cancel")
@@ -395,13 +443,13 @@ fun editIncome(db: Firestore, data: Data) {
             }
         }
 
-        println("Income Source (to cancel, type 0): ")
+        println("Income Source (to cancel the operation, type 0): ")
         val source = readLine().toString()
         if (source == "0") {
             return
         }
 
-        println("Income Value (to cancel, type 0): ")
+        println("Income Value (to cancel the operation, type 0): ")
         var value = readLine()?.toDoubleOrNull()
         if (value == 0.0) {
             return
@@ -414,7 +462,7 @@ fun editIncome(db: Firestore, data: Data) {
             }
         }
 
-        editIncomeDb(db, data, index, Input(source, value))
+        editIncomeDb(db, data, index, Income(source, value))
 
         println("Would you like to edit another income? y/n")
         status = readLine()!!.toLowerCase()
@@ -467,7 +515,37 @@ fun editExpense(db: Firestore, data: Data) {
             }
         }
 
-        editExpenseDb(db, data, index, Input(source, value))
+        println("Would you like to edit the category of this expense? (y/n) ")
+        var newCategory = readLine()
+        while (newCategory != "y" && newCategory != "n") {
+            println("Invalid value. Please try again:")
+            newCategory = readLine()
+        }
+
+        var categoryName: String
+        if (newCategory == "n") {
+            categoryName = ""
+        } else {
+            displayCategories(data)
+            println("Select Category (type 0 to cancel the operation, or type 'new' to create a new category): ")
+            val category = readLine()
+            if (category == "new") {
+                categoryName = addCategory(db, true)
+            } else {
+                var categoryIndex = category?.toIntOrNull()
+                if (categoryIndex == 0) {
+                    return
+                }
+                while (categoryIndex !in 1..data.categories.size || categoryIndex == null) {
+                    println("Invalid value. Please try again:")
+                    categoryIndex = readLine()?.toIntOrNull()
+                }
+                categoryName = data.categories[categoryIndex - 1]
+            }
+        }
+
+
+        editExpenseDb(db, data, index, Expense(source, value, categoryName))
 
         println("Would you like to edit another expense? y/n")
         status = readLine()!!.toLowerCase()
@@ -633,7 +711,7 @@ fun initializeDb(data: Data): Firestore {
 }
 
 // Push an income to the database
-fun addIncomeDb(db: Firestore, income: Input, data: Data) {
+fun addIncomeDb(db: Firestore, income: Income, data: Data) {
     val incomeDb = HashMap<String, Any>()
     incomeDb["source"] = income.source
     incomeDb["value"] = income.value
@@ -641,10 +719,11 @@ fun addIncomeDb(db: Firestore, income: Input, data: Data) {
 }
 
 // Push an expense to the database
-fun addExpenseDb(db: Firestore, expense: Input, data: Data) {
+fun addExpenseDb(db: Firestore, expense: Expense, data: Data) {
     val expenseDb = HashMap<String, Any>()
     expenseDb["source"] = expense.source
     expenseDb["value"] = expense.value
+    expenseDb["category"] = expense.category
     db.collection("${data.year}").document("${data.month}").collection("expense").document().set(expenseDb)
 }
 
@@ -655,40 +734,65 @@ fun addCategoryDb(db: Firestore, name: String) {
 }
 
 // Edit an income in the database
-fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Input) {
-    val docRef = db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1])
+fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Income) {
+    val docRef = db.collection("${data.year}").document("${data.month}").collection("income")
+        .document(data.incomesDbKeys[index - 1])
     docRef.update("source", newData.source, "value", newData.value)
     println("Income edited.")
 }
 
 // Edit an expense in the database
-fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Input) {
-    val docRef = db.collection("${data.year}").document("${data.month}").collection("expense").document(data.incomesDbKeys[index - 1])
-    docRef.update("source", newData.source, "value", newData.value)
+fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Expense) {
+    val docRef = db.collection("${data.year}").document("${data.month}").collection("expense")
+        .document(data.expensesDbKeys[index - 1])
+    docRef.update("source", newData.source, "value", newData.value, "category", newData.category)
     println("Expense edited.")
 }
 
 fun editCategoryDb(db: Firestore, data: Data, index: Int, name: String) {
     val docRef = db.collection("categories").document(data.categoriesId[index - 1])
     docRef.update("name", name)
+
+    // This code will edit the category for the existing expenses entries
+    val category = data.categories[index - 1]
+    for ((idx, value) in data.expensesDb.withIndex()) {
+        if (value.category == category) {
+            val docRefExisting = db.collection("${data.year}").document("${data.month}").collection("expense")
+                .document(data.expensesDbKeys[idx])
+            docRefExisting.update("category", name)
+        }
+    }
+
     println("Category edited.")
 }
 
 // Delete an income in the database
 fun deleteIncomeDb(db: Firestore, data: Data, index: Int) {
-    db.collection("${data.year}").document("${data.month}").collection("income").document(data.incomesDbKeys[index - 1]).delete()
+    db.collection("${data.year}").document("${data.month}").collection("income")
+        .document(data.incomesDbKeys[index - 1]).delete()
     println("Income deleted.")
 }
 
 // Delete an expense in the database
 fun deleteExpenseDb(db: Firestore, data: Data, index: Int) {
-    db.collection("${data.year}").document("${data.month}").collection("expense").document(data.expensesDbKeys[index - 1]).delete()
+    db.collection("${data.year}").document("${data.month}").collection("expense")
+        .document(data.expensesDbKeys[index - 1]).delete()
     println("Expense deleted.")
 }
 
 fun deleteCategoryDb(db: Firestore, data: Data, index: Int) {
     db.collection("categories").document(data.categoriesId[index - 1]).delete()
     println("Category deleted.")
+
+    // The code below will delete the category from existing expenses
+    val category = data.categories[index - 1]
+    for ((idx, value) in data.expensesDb.withIndex()) {
+        if (value.category == category) {
+            val docRef = db.collection("${data.year}").document("${data.month}").collection("expense")
+                .document(data.expensesDbKeys[idx])
+            docRef.update("category", "")
+        }
+    }
 }
 
 // Calls two functions, one for the income and the other for the expense collection,
@@ -715,7 +819,8 @@ fun deleteAll(db: Firestore, data: Data) {
 // Delete all incomes in the database
 fun deleteAllIncomes(db: Firestore, data: Data) {
     try {
-        val incomes: ApiFuture<QuerySnapshot> = db.collection("${data.year}").document("${data.month}").collection("income").get()
+        val incomes: ApiFuture<QuerySnapshot> =
+            db.collection("${data.year}").document("${data.month}").collection("income").get()
         val documents = incomes.get().documents
         for (document in documents) {
             document.reference.delete()
@@ -728,7 +833,8 @@ fun deleteAllIncomes(db: Firestore, data: Data) {
 // Delete all expenses in the database
 fun deleteAllExpenses(db: Firestore, data: Data) {
     try {
-        val expenses: ApiFuture<QuerySnapshot> = db.collection("${data.year}").document("${data.month}").collection("expense").get()
+        val expenses: ApiFuture<QuerySnapshot> =
+            db.collection("${data.year}").document("${data.month}").collection("expense").get()
         val documents = expenses.get().documents
         for (document in documents) {
             document.reference.delete()
@@ -754,7 +860,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
                     for (doc in snapshots) {
                         doc.getString("source")?.let {
                             doc.getDouble("value")
-                                ?.let { it1 -> Input(it, it1) }
+                                ?.let { it1 -> Income(it, it1) }
                         }?.let { data.incomesDb.add(it) }
                         data.incomesDbKeys.add(doc.id)
                     }
@@ -768,14 +874,17 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
                 data.expensesDb.clear()
                 data.expensesDbKeys.clear()
                 if (e != null) {
-                    System.err.println("Listen failed:$e")
+                    println("Listen failed:$e")
                     return
                 }
                 if (snapshots != null) {
                     for (doc in snapshots) {
-                        doc.getString("source")?.let {
-                            doc.getDouble("value")
-                                ?.let { it1 -> Input(it, it1) }
+                        doc.getString("source")?.let { source ->
+                            doc.getDouble("value")?.let { value ->
+                                doc.getString("category")?.let { category ->
+                                    Expense(source, value, category)
+                                }
+                            }
                         }?.let { data.expensesDb.add(it) }
                         data.expensesDbKeys.add(doc.id)
                     }
