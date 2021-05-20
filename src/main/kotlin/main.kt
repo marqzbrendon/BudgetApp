@@ -10,7 +10,7 @@ import java.time.Year
 data class Data(
     var month: Long = 0L,
     var year: Long = 0L,
-    val categories: MutableList<String> = mutableListOf(),
+    val categories: MutableList<Category> = mutableListOf(),
     val categoriesId: MutableList<String> = mutableListOf(),
     val incomesDb: MutableList<Income> = mutableListOf(),
     val expensesDb: MutableList<Expense> = mutableListOf(),
@@ -26,7 +26,12 @@ data class Income(
 data class Expense(
     val source: String,
     val value: Double,
-    val category: String
+    val categoryName: String
+)
+
+data class Category(
+    val name: String,
+    val budget: Double
 )
 
 //***********************************************************************
@@ -61,7 +66,7 @@ fun main() {
                 """SELECT AN OPTION.
             1) Incomes
             2) Expenses
-            3) Manage Categories
+            3) Categories
             4) Display Summary
             7) Change Month/Year
             8) Delete All Data
@@ -223,7 +228,7 @@ fun manageCategories(db: Firestore, data: Data) {
             option = readLine()?.toIntOrNull()
         }
         when (option) {
-            1 -> addCategory(db, false)
+            1 -> addCategory(db, data, false)
             2 -> editCategory(db, data)
             3 -> deleteCategory(db, data)
             4 -> displayCategories(data)
@@ -312,7 +317,7 @@ fun addExpenses(db: Firestore, data: Data) {
             println("Select Category (type 0 to cancel the operation, or type 'new' to create a new category): ")
             val category = readLine()
             if (category == "new") {
-                categoryName = addCategory(db, true)
+                categoryName = addCategory(db, data, true)
             } else {
                 var categoryIndex = category?.toIntOrNull()
                 if (categoryIndex == 0) {
@@ -321,8 +326,11 @@ fun addExpenses(db: Firestore, data: Data) {
                 while (categoryIndex !in 1..data.categories.size || categoryIndex == null) {
                     println("Invalid value. Please try again:")
                     categoryIndex = readLine()?.toIntOrNull()
+                    if (categoryIndex == 0) {
+                        return
+                    }
                 }
-                categoryName = data.categories[categoryIndex - 1]
+                categoryName = data.categories[categoryIndex - 1].name
             }
         }
 
@@ -341,10 +349,12 @@ fun addExpenses(db: Firestore, data: Data) {
     }
 }
 
-fun addCategory(db: Firestore, addOneOnly: Boolean): String {
+fun addCategory(db: Firestore, data: Data, addOneOnly: Boolean): String {
     println("ADD CATEGORIES")
     var status = ""
     var name = ""
+    var budget: String
+    var budgetValue: Double? = 0.0
     while (status != "n") {
         println("Category Name (to cancel the operation, type 0): ")
         name = readLine().toString()
@@ -352,8 +362,28 @@ fun addCategory(db: Firestore, addOneOnly: Boolean): String {
             return ""
         }
 
+        println("Would you like to create a budget for this category? (y/n)")
+        budget = readLine().toString().toLowerCase()
+        while (budget != "y" && budget != "n") {
+            println("Invalid input. Would you like to create a monthly budget for this category? (y/n)")
+            budget = readLine().toString().toLowerCase()
+        }
+        if (budget == "y") {
+            println("Category Budget Value (to cancel the operation, type 0): ")
+            budgetValue = readLine()?.toDoubleOrNull()
+            if (budgetValue == 0.0) {
+                return ""
+            }
+            if (budgetValue == null || getNumberOfDecimalPlaces(budgetValue.toBigDecimal()) > 2 || budgetValue < 0) {
+                println("Invalid value. Please try again:")
+                budgetValue = readLine()?.toDoubleOrNull()
+            }
+
+        }
+
+
         // Call the database to add the new category
-        addCategoryDb(db, name)
+        addCategoryDb(db, data, Category(name, budgetValue!!))
 
         if (!addOneOnly) {
             // Ask if user would like to add another category
@@ -368,56 +398,6 @@ fun addCategory(db: Firestore, addOneOnly: Boolean): String {
         }
     }
     return name
-}
-
-// Display the list of incomes and their total
-fun displayIncome(data: Data, displayCancel: Boolean): Double {
-    var incomesTotal = 0.0
-    println("YOUR INCOMES:")
-    for (i in data.incomesDb.indices) {
-        incomesTotal += data.incomesDb[i].value
-        println("${i + 1}. ${data.incomesDb[i].source} - $${data.incomesDb[i].value}")
-    }
-    if (displayCancel) {
-        println("\n0. Cancel")
-        return 0.0
-    }
-    println("INCOMES TOTAL: $${incomesTotal}")
-    println("\n")
-    return incomesTotal
-}
-
-// Display the list of expenses and their total
-fun displayExpense(data: Data, displayCancel: Boolean): Double {
-    println("YOUR EXPENSES:")
-    var expensesTotal = 0.0
-    for (i in data.expensesDb.indices) {
-        expensesTotal += data.expensesDb[i].value
-        println("${i + 1}. ${data.expensesDb[i].source} - $${data.expensesDb[i].value} (${data.expensesDb[i].category})")
-    }
-    if (displayCancel) {
-        println("\n0. Cancel")
-        return 0.0
-    }
-    println("EXPENSES TOTAL: $${expensesTotal}")
-    return expensesTotal
-}
-
-fun displayCategories(data: Data) {
-    println("YOUR CATEGORIES:")
-    for (i in data.categories.indices) {
-        println("${i + 1}. ${data.categories[i]}")
-    }
-}
-
-// Display both the income total and the expanse total, and subtract their values
-fun displayFinalBalance(data: Data) {
-    val incomeTotal = displayIncome(data, false)
-    val expenseTotal = displayExpense(data, false)
-
-    println("--------------------------------------------")
-    println("FINAL BALANCE: $${incomeTotal.toBigDecimal() - expenseTotal.toBigDecimal()}")
-    println("--------------------------------------------")
 }
 
 // Edit any income
@@ -530,7 +510,7 @@ fun editExpense(db: Firestore, data: Data) {
             println("Select Category (type 0 to cancel the operation, or type 'new' to create a new category): ")
             val category = readLine()
             if (category == "new") {
-                categoryName = addCategory(db, true)
+                categoryName = addCategory(db, data, true)
             } else {
                 var categoryIndex = category?.toIntOrNull()
                 if (categoryIndex == 0) {
@@ -540,7 +520,7 @@ fun editExpense(db: Firestore, data: Data) {
                     println("Invalid value. Please try again:")
                     categoryIndex = readLine()?.toIntOrNull()
                 }
-                categoryName = data.categories[categoryIndex - 1]
+                categoryName = data.categories[categoryIndex - 1].name
             }
         }
 
@@ -584,7 +564,20 @@ fun editCategory(db: Firestore, data: Data) {
             return
         }
 
-        editCategoryDb(db, data, index, name)
+        println("Category Monthly Budget Value (to cancel the operation, type 0): ")
+        var value = readLine()?.toDoubleOrNull()
+        if (value == 0.0) {
+            return
+        }
+        while (value == null || getNumberOfDecimalPlaces(value.toBigDecimal()) > 2 || value < 0.0) {
+            println("Invalid value. Please try again:")
+            value = readLine()?.toDoubleOrNull()
+            if (value == 0.0) {
+                return
+            }
+        }
+
+        editCategoryDb(db, data, index, Category(name, value))
 
         println("Would you like to edit another category? y/n")
         status = readLine()!!.toLowerCase()
@@ -674,7 +667,7 @@ fun deleteCategory(db: Firestore, data: Data) {
             return
         }
     }
-    println("The category \"${data.categories[index - 1]}\" will be deleted. Do you wish to continue? y/n")
+    println("The category \"${data.categories[index - 1].name}\" will be deleted. Do you wish to continue? y/n")
     var confirm = readLine()!!.toLowerCase()
     while (confirm != "n" && confirm != "y") {
         println("Invalid input. Would you like to delete \"${data.categories[index - 1]}\"? y/n")
@@ -682,6 +675,71 @@ fun deleteCategory(db: Firestore, data: Data) {
     }
     if (confirm == "y") {
         deleteCategoryDb(db, data, index)
+    }
+}
+
+// Display the list of incomes and their total
+fun displayIncome(data: Data, displayCancel: Boolean): Double {
+    var incomesTotal = 0.0
+    println("--------------------------------------------")
+    println("YOUR INCOMES:")
+    for (i in data.incomesDb.indices) {
+        incomesTotal += data.incomesDb[i].value
+        println("${i + 1}. ${data.incomesDb[i].source} - $${data.incomesDb[i].value}")
+    }
+    if (displayCancel) {
+        println("\n0. Cancel")
+        return 0.0
+    }
+    println("INCOMES TOTAL: $${incomesTotal}")
+    return incomesTotal
+}
+
+// Display the list of expenses and their total
+fun displayExpense(data: Data, displayCancel: Boolean): Double {
+    println("--------------------------------------------")
+    println("YOUR EXPENSES:")
+    var expensesTotal = 0.0
+    for (i in data.expensesDb.indices) {
+        expensesTotal += data.expensesDb[i].value
+        println("${i + 1}. ${data.expensesDb[i].source} - $${data.expensesDb[i].value} (${data.expensesDb[i].categoryName})")
+    }
+    if (displayCancel) {
+        println("\n0. Cancel")
+        return 0.0
+    }
+    println("EXPENSES TOTAL: $${expensesTotal}")
+    return expensesTotal
+}
+
+fun displayCategories(data: Data) {
+    println("YOUR CATEGORIES:")
+    for (i in data.categories.indices) {
+        println("${i + 1}. ${data.categories[i].name} (Budget: ${data.categories[i].budget})")
+    }
+}
+
+// Display both the income total and the expanse total, and subtract their values
+fun displayFinalBalance(data: Data) {
+    val incomeTotal = displayIncome(data, false)
+    val expenseTotal = displayExpense(data, false)
+    println("********************************************")
+    println("FINAL BALANCE: $${incomeTotal.toBigDecimal() - expenseTotal.toBigDecimal()}")
+    println("********************************************")
+    getBudgetReport(data)
+}
+
+fun getBudgetReport(data: Data) {
+    for (category in data.categories) {
+        var totalSum = 0.0
+        for (expense in data.expensesDb) {
+            if (category.name == expense.categoryName) {
+                totalSum += expense.value
+            }
+        }
+        println("Category: ${category.name} - Balance: ${category.budget - totalSum}")
+        println("\tBudget: ${category.budget}")
+        println("\tSpent:  ${totalSum}\n")
     }
 }
 
@@ -723,14 +781,15 @@ fun addExpenseDb(db: Firestore, expense: Expense, data: Data) {
     val expenseDb = HashMap<String, Any>()
     expenseDb["source"] = expense.source
     expenseDb["value"] = expense.value
-    expenseDb["category"] = expense.category
+    expenseDb["category"] = expense.categoryName
     db.collection("${data.year}").document("${data.month}").collection("expense").document().set(expenseDb)
 }
 
-fun addCategoryDb(db: Firestore, name: String) {
+fun addCategoryDb(db: Firestore, data: Data, category: Category) {
     val categoryDb = HashMap<String, Any>()
-    categoryDb["name"] = name
-    db.collection("categories").document().set(categoryDb)
+    categoryDb["name"] = category.name
+    categoryDb["budget"] = category.budget
+    db.collection("${data.year}").document("${data.month}").collection("categories").document().set(categoryDb)
 }
 
 // Edit an income in the database
@@ -745,21 +804,21 @@ fun editIncomeDb(db: Firestore, data: Data, index: Int, newData: Income) {
 fun editExpenseDb(db: Firestore, data: Data, index: Int, newData: Expense) {
     val docRef = db.collection("${data.year}").document("${data.month}").collection("expense")
         .document(data.expensesDbKeys[index - 1])
-    docRef.update("source", newData.source, "value", newData.value, "category", newData.category)
+    docRef.update("source", newData.source, "value", newData.value, "category", newData.categoryName)
     println("Expense edited.")
 }
 
-fun editCategoryDb(db: Firestore, data: Data, index: Int, name: String) {
-    val docRef = db.collection("categories").document(data.categoriesId[index - 1])
-    docRef.update("name", name)
+fun editCategoryDb(db: Firestore, data: Data, index: Int, category: Category) {
+    val docRef = db.collection("${data.year}").document("${data.month}").collection("categories").document(data.categoriesId[index - 1])
+    docRef.update("name", category.name, "budget", category.budget)
 
     // This code will edit the category for the existing expenses entries
-    val category = data.categories[index - 1]
+    val newCategory = data.categories[index - 1].name
     for ((idx, value) in data.expensesDb.withIndex()) {
-        if (value.category == category) {
+        if (value.categoryName == newCategory) {
             val docRefExisting = db.collection("${data.year}").document("${data.month}").collection("expense")
                 .document(data.expensesDbKeys[idx])
-            docRefExisting.update("category", name)
+            docRefExisting.update("category", newCategory)
         }
     }
 
@@ -784,10 +843,10 @@ fun deleteCategoryDb(db: Firestore, data: Data, index: Int) {
     db.collection("categories").document(data.categoriesId[index - 1]).delete()
     println("Category deleted.")
 
-    // The code below will delete the category from existing expenses
-    val category = data.categories[index - 1]
+    // This code will delete the category for the existing expenses entries
+    val category = data.categories[index - 1].name
     for ((idx, value) in data.expensesDb.withIndex()) {
-        if (value.category == category) {
+        if (value.categoryName == category) {
             val docRef = db.collection("${data.year}").document("${data.month}").collection("expense")
                 .document(data.expensesDbKeys[idx])
             docRef.update("category", "")
@@ -798,7 +857,7 @@ fun deleteCategoryDb(db: Firestore, data: Data, index: Int) {
 // Calls two functions, one for the income and the other for the expense collection,
 // that will delete all the data in those collections
 fun deleteAll(db: Firestore, data: Data) {
-    if (data.expensesDb.size < 1 && data.incomesDb.size < 1) {
+    if (data.expensesDb.size < 1 && data.incomesDb.size < 1 && data.categories.size < 1) {
         println("Nothing to delete.")
         return
     }
@@ -813,6 +872,7 @@ fun deleteAll(db: Firestore, data: Data) {
     }
     deleteAllIncomes(db, data)
     deleteAllExpenses(db, data)
+    deleteAllCategories(db, data)
     println("All data has been deleted.")
 }
 
@@ -835,6 +895,19 @@ fun deleteAllExpenses(db: Firestore, data: Data) {
     try {
         val expenses: ApiFuture<QuerySnapshot> =
             db.collection("${data.year}").document("${data.month}").collection("expense").get()
+        val documents = expenses.get().documents
+        for (document in documents) {
+            document.reference.delete()
+        }
+    } catch (e: Exception) {
+        println("Error deleting collection : " + e.message)
+    }
+}
+
+fun deleteAllCategories(db: Firestore, data: Data) {
+    try {
+        val expenses: ApiFuture<QuerySnapshot> =
+            db.collection("${data.year}").document("${data.month}").collection("categories").get()
         val documents = expenses.get().documents
         for (document in documents) {
             document.reference.delete()
@@ -892,7 +965,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
             }
         })
 
-    db?.collection("categories")
+    db?.collection("${data.year}")?.document("${data.month}")?.collection("categories")
         ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
             override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
                 data.categories.clear()
@@ -902,7 +975,11 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
                 }
                 if (snapshots != null) {
                     for (doc in snapshots) {
-                        doc.getString("name")?.let { data.categories.add(it) }
+                        doc.getString("name")?.let { name ->
+                            doc.getDouble("budget")?.let { budget ->
+                                Category(name, budget)
+                            }
+                        }?.let { data.categories.add(it) }
                         data.categoriesId.add(doc.id)
                     }
                 }
