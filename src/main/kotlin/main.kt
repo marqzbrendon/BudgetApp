@@ -674,6 +674,7 @@ fun deleteCategory(db: Firestore, data: Data) {
         confirm = readLine()!!.toLowerCase()
     }
     if (confirm == "y") {
+        println(data.categoriesId[index-1])
         deleteCategoryDb(db, data, index)
     }
 }
@@ -840,18 +841,16 @@ fun deleteExpenseDb(db: Firestore, data: Data, index: Int) {
 }
 
 fun deleteCategoryDb(db: Firestore, data: Data, index: Int) {
-    db.collection("categories").document(data.categoriesId[index - 1]).delete()
-    println("Category deleted.")
-
     // This code will delete the category for the existing expenses entries
-    val category = data.categories[index - 1].name
     for ((idx, value) in data.expensesDb.withIndex()) {
-        if (value.categoryName == category) {
+        if (value.categoryName == data.categories[index - 1].name) {
             val docRef = db.collection("${data.year}").document("${data.month}").collection("expense")
                 .document(data.expensesDbKeys[idx])
             docRef.update("category", "")
         }
     }
+    db.collection("${data.year}").document("${data.month}").collection("categories").document(data.categoriesId[index - 1]).delete()
+    println("Category deleted.")
 }
 
 // Calls two functions, one for the income and the other for the expense collection,
@@ -969,6 +968,7 @@ fun retrieveAllDocuments(db: Firestore?, data: Data) {
         ?.addSnapshotListener(object : EventListener<QuerySnapshot?> {
             override fun onEvent(snapshots: QuerySnapshot?, e: FirestoreException?) {
                 data.categories.clear()
+                data.categoriesId.clear()
                 if (e != null) {
                     println("Listen failed:$e")
                     return
