@@ -14,7 +14,7 @@ All the income and expense data are stored in a Firestore cloud database.
 
 This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
 
-[Software Demo Video - Part 1](https://youtu.be/NhRPpvf6enk)
+[Software Demo Video - Part 1](https://youtu.be/NhRPpvf6enk) <br>
 [Software Demo Video - Part 2](https://youtu.be/491aPyHKkOQ)
 
 # Development Environment
