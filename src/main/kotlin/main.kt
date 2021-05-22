@@ -674,7 +674,6 @@ fun deleteCategory(db: Firestore, data: Data) {
         confirm = readLine()!!.toLowerCase()
     }
     if (confirm == "y") {
-        println(data.categoriesId[index-1])
         deleteCategoryDb(db, data, index)
     }
 }

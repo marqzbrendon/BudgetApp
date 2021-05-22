@@ -1,20 +1,20 @@
 # Overview
 
-This is a Budget app written in Kotlin.
+This is a Budget app written in Kotlin that I created to learn the language.
 
 Currently, the program support the following features:
 - Add/edit/delete income
 - Add/edit/delete expense
-- Display budget summary
+- Display summary of incomes, expenses, how much was spent by category, and final balance
+- Add categories to expenses
+- Add a budget for each category    
 - Delete all data
 
-All the income and expense data are stored in a Firestore cloud database. 
-
-In future releases, the program will also support adding categories for expenses, create budgets for each of the categories, and more. 
+All the income and expense data are stored in a Firestore cloud database.
 
 This program was created to test the environment of Kotlin using Intellij IDEA Community Version, git, and GitHub. 
 
-[Software Demo Video](https://youtu.be/NhRPpvf6enk)
+[Software Demo Video 1](https://youtu.be/NhRPpvf6enk)
 
 # Development Environment
 
